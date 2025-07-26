@@ -30,7 +30,7 @@ from openpyxl.formatting.rule import ColorScaleRule, CellIsRule
 # =============================================================================
 
 # Базовая папка проекта
-BASE_DIR = r"/Users/orionflash/Desktop/MyProject/Gen_Load_Game_Script/Project_Game_Load_Script-Cursor/Generate_LoadDB_Script_Gamification/WORK"
+BASE_DIR = r"/Users/orionflash/Desktop/MyProject/Gen_Load_Game_Script/WORK"
 
 # Настройки логирования
 LOG_LEVEL = "DEBUG"  # Уровень детализации логов: "INFO" - основная информация, "DEBUG" - подробная отладочная информация
@@ -235,7 +235,7 @@ FUNCTION_CONFIGS = {
         "csv_encoding": "utf-8",  # Ключ: кодировка CSV файла
         "input_file": "TOURNAMENT-SCHEDULE (PROM) 2025-07-25 v6",  # Ключ: имя входного файла (без расширения)
         "json_file": "leadersForAdmin_SIGMA_20250726-192035",  # Ключ: имя JSON файла для обработки (без расширения)
-        "excel_file": "LeadersForAdmin_Excel",  # Ключ: имя Excel файла для создания (без расширения)
+        "excel_file": "LeadersForAdmin",  # Ключ: имя Excel файла для создания (без расширения)
         "excel_freeze_cell": "B2"  # Ключ: ячейка для закрепления в Excel (B2 = первая строка и первая колонка)
     },
     "reward": {  # Ключ: конфигурация для скрипта REWARD (выгрузка профилей участников по кодам наград)
@@ -518,7 +518,11 @@ def measure_time(func):
         
         # Формирование строки параметров для логирования
         # Ограничиваем количество аргументов для читаемости логов
-        params_str = f"args={args[:2] if len(args) > 2 else args}, kwargs={list(kwargs.keys())}"
+        # Исключаем вывод содержимого скриптов
+        if func.__name__ in ['generate_leaders_for_admin_script', 'generate_reward_script']:
+            params_str = f"args=(), kwargs={list(kwargs.keys())}"
+        else:
+            params_str = f"args={args[:2] if len(args) > 2 else args}, kwargs={list(kwargs.keys())}"
         logger.debug(LOG_MESSAGES['function_start'].format(func=func.__name__, params=params_str))
         
         try:
@@ -530,14 +534,22 @@ def measure_time(func):
             function_execution_times[func.__name__] = execution_time
             
             # Логирование успешного завершения
-            logger.debug(LOG_MESSAGES['function_completed'].format(func=func.__name__, params=params_str, time=execution_time))
+            # Исключаем вывод содержимого скриптов
+            if func.__name__ in ['generate_leaders_for_admin_script', 'generate_reward_script']:
+                logger.debug(LOG_MESSAGES['function_completed'].format(func=func.__name__, params="args=(), kwargs=[]", time=execution_time))
+            else:
+                logger.debug(LOG_MESSAGES['function_completed'].format(func=func.__name__, params=params_str, time=execution_time))
             return result
             
         except Exception as e:
             # Обработка ошибок
             execution_time = time.time() - start_time
             function_execution_times[func.__name__] = execution_time
-            logger.error(LOG_MESSAGES['function_error'].format(func=func.__name__, params=params_str, error=str(e)))
+            # Исключаем вывод содержимого скриптов при ошибках
+            if func.__name__ in ['generate_leaders_for_admin_script', 'generate_reward_script']:
+                logger.error(LOG_MESSAGES['function_error'].format(func=func.__name__, params="args=(), kwargs=[]", error=str(e)))
+            else:
+                logger.error(LOG_MESSAGES['function_error'].format(func=func.__name__, params=params_str, error=str(e)))
             raise
             
     return wrapper
@@ -1089,8 +1101,8 @@ def load_script_data(config_key, data_list=None):
             # Загрузка данных из файла
             file_extension = FILE_EXTENSIONS.get(config["input_format"], ".txt")
             filename = f"{config_key}_data{file_extension}"
-            input_dir = os.path.join(BASE_DIR, SUBDIRECTORIES["INPUT"])
-            filepath = os.path.join(input_dir, filename)
+            config_dir = os.path.join(BASE_DIR, SUBDIRECTORIES["CONFIG"])
+            filepath = os.path.join(config_dir, filename)
             data_list = load_data_from_file(
                 filepath, 
                 config["input_format"],
@@ -1101,8 +1113,8 @@ def load_script_data(config_key, data_list=None):
         elif config["data_source"] == "external_file":
             # Загрузка данных из внешнего файла
             file_extension = FILE_EXTENSIONS.get(config["input_format"], ".csv")
-            input_dir = os.path.join(BASE_DIR, SUBDIRECTORIES["INPUT"])
-            filepath = os.path.join(input_dir, config["input_file"] + file_extension)
+            config_dir = os.path.join(BASE_DIR, SUBDIRECTORIES["CONFIG"])
+            filepath = os.path.join(config_dir, config["input_file"] + file_extension)
             data_list = load_data_from_file(
                 filepath, 
                 config["input_format"],
@@ -1157,8 +1169,17 @@ def generate_leaders_for_admin_script(data_list=None):
     Returns:
         str: Сгенерированный JavaScript скрипт
     """
+    logger.info("=== ГЕНЕРАЦИЯ СКРИПТА: LeadersForAdmin ===")
+    logger.debug(f"[START] generate_leaders_for_admin_script args=({data_list}), kwargs=[]")
+    
     # Загрузка данных и конфигурации
+    logger.info("Загрузка данных и конфигурации...")
     config, data_list, selected_variant, variant_config = load_script_data("leaders_for_admin", data_list)
+    
+    logger.info(f"Конфигурация загружена: {len(data_list)} элементов")
+    logger.debug(f"Выбранный вариант: {selected_variant}")
+    logger.debug(f"Домен: {variant_config['domain']}")
+    logger.debug(f"API путь: {variant_config['params']['api_path']}")
     
     # Генерация JavaScript скрипта для LeadersForAdmin
     script = f"""// ==UserScript==
@@ -1194,7 +1215,7 @@ def generate_leaders_for_admin_script(data_list=None):
       + pad(d.getSeconds());
   }}
 
-  const ids = {json.dumps(data_list, indent=2)};
+  const ids = [{', '.join([f'"{item}"' for item in data_list])}];
   const service = 'leadersForAdmin';
   const BASE_URL = '{variant_config['domain']}{variant_config['params']['api_path']}';
   const results = {{}};
@@ -1256,8 +1277,11 @@ def generate_leaders_for_admin_script(data_list=None):
 }})();"""
     
     # Сохранение и копирование скрипта
+    logger.info("Сохранение скрипта в файл...")
     save_and_copy_script(script, config, "leaders_for_admin", data_list)
     
+    logger.info(f"Скрипт LeadersForAdmin сгенерирован успешно (данных: {len(data_list)})")
+    logger.debug(f"[END] generate_leaders_for_admin_script args=(), kwargs=[]")
     return script
 
 @measure_time
@@ -1269,9 +1293,20 @@ def generate_reward_script(data_list=None):
     Returns:
         str: Сгенерированный JavaScript скрипт
     """
+    logger.info("=== ГЕНЕРАЦИЯ СКРИПТА: Reward ===")
+    logger.debug(f"[START] generate_reward_script args=({data_list}), kwargs=[]")
+    
     import datetime
     import json
+    
+    logger.info("Загрузка данных и конфигурации...")
     config, data_list, selected_variant, variant_config = load_script_data("reward", data_list)
+    
+    logger.info(f"Конфигурация загружена: {len(data_list)} элементов")
+    logger.debug(f"Выбранный вариант: {selected_variant}")
+    logger.debug(f"Домен: {variant_config['domain']}")
+    logger.debug(f"API путь: {variant_config['params']['api_path']}")
+    
     delay = variant_config.get('delay_between_requests', 5)
     max_retries = variant_config.get('retry_count', 3)
     timeout = variant_config.get('timeout', 30000)
@@ -1279,7 +1314,12 @@ def generate_reward_script(data_list=None):
     api_path = variant_config['params']['api_path']
     service = variant_config['params']['service']
     base_url = f"{domain}{api_path}"
-    ids_json = json.dumps(data_list, indent=2, ensure_ascii=False)
+    
+    logger.debug(f"Параметры запросов: delay={delay}, max_retries={max_retries}, timeout={timeout}")
+    logger.debug(f"Базовый URL: {base_url}")
+    
+    ids_string = ', '.join([f'"{item}"' for item in data_list])
+    logger.debug(f"Строка IDs сгенерирована: {len(data_list)} элементов")
     script = f'''// ==UserScript==
 // Скрипт для DevTools. Выгрузка профилей участников по кодам наград с пагинацией
 // Вариант: {selected_variant.upper()}
@@ -1338,7 +1378,7 @@ def generate_reward_script(data_list=None):
     }}
   }}
 
-  const ids = {ids_json};
+  const ids = [{ids_string}];
   const BASE_URL = '{base_url}';
   const results = {{}};
   let totalProfiles = 0;
@@ -1346,7 +1386,7 @@ def generate_reward_script(data_list=None):
   for (let i = 0; i < ids.length; i++) {{
     const code = ids[i];
     const baseUrl = `${{BASE_URL}}${{code}}/profiles`;
-    console.log(`\n🔍 [${{i + 1}}/${{ids.length}}] Код: ${{code}}`);
+    console.log(`\\n🔍 [${{i + 1}}/${{ids.length}}] Код: ${{code}}`);
     try {{
       const firstResp = await fetchWithRetry(`${{baseUrl}}?pageNum=1&divisionLevel=BANK`, {{
         headers: {{ 'Accept': 'application/json', 'Cookie': document.cookie, 'User-Agent': navigator.userAgent }},
@@ -1382,7 +1422,7 @@ def generate_reward_script(data_list=None):
     }}
   }}
 
-  console.log('\n📦 Удаляем photoData...');
+  console.log('\\n📦 Удаляем photoData...');
   removePhotoData(results);
   const ts = getTimestamp();
   const blob = new Blob([JSON.stringify(results, null, 2)], {{ type: 'application/json' }});
@@ -1390,11 +1430,14 @@ def generate_reward_script(data_list=None):
   a.href = URL.createObjectURL(blob);
   a.download = `profiles_{selected_variant.upper()}_${{ts}}.json`;
   a.click();
-  console.log(`\n✅ Завершено. Всего профилей: ${{totalProfiles}}`);
+  console.log(`\\n✅ Завершено. Всего профилей: ${{totalProfiles}}`);
 }})();
 '''
+    logger.info("Сохранение скрипта в файл...")
     save_script_to_file(script, config['name'], "reward")
-    logger.info(LOG_MESSAGES['script_generated'].format(script_name=config['name'], count=len(data_list)))
+    
+    logger.info(f"Скрипт Reward сгенерирован успешно (данных: {len(data_list)})")
+    logger.debug(f"[END] generate_reward_script args=(), kwargs=[]")
     return script
 
 def generate_profile_script(data_list=None):
@@ -1609,7 +1652,7 @@ def convert_leaders_json_to_excel(input_json_path, output_excel_path, config_key
                                     
                                     total_tournaments += 1
                                     total_leaders += len(tournament_leaders)
-                                    logger.info(LOG_MESSAGES['json_leaders_found'].format(key=tournament_key, count=len(tournament_leaders)))
+                                    logger.debug(LOG_MESSAGES['json_leaders_found'].format(key=tournament_key, count=len(tournament_leaders)))
             
             logger.info(f"Обработано турниров: {total_tournaments}, общее количество лидеров: {total_leaders}")
             leaders_data = all_leaders_data
