@@ -740,8 +740,20 @@ def flatten_leader_data(leader_data):
     for rating in division_ratings:
         group_code = rating.get('groupCode', '')
         if group_code in categories:
-            flattened[f'{group_code}_groupId'] = rating.get('groupId', '')
-            flattened[f'{group_code}_placeInRating'] = rating.get('placeInRating', '')
+            # Преобразуем groupId в целое число
+            group_id_raw = rating.get('groupId', '')
+            try:
+                flattened[f'{group_code}_groupId'] = int(float(group_id_raw)) if group_id_raw else ''
+            except (ValueError, TypeError):
+                flattened[f'{group_code}_groupId'] = ''
+            
+            # Преобразуем placeInRating в целое число
+            place_in_rating_raw = rating.get('placeInRating', '')
+            try:
+                flattened[f'{group_code}_placeInRating'] = int(float(place_in_rating_raw)) if place_in_rating_raw else ''
+            except (ValueError, TypeError):
+                flattened[f'{group_code}_placeInRating'] = ''
+            
             flattened[f'{group_code}_ratingCategoryName'] = rating.get('ratingCategoryName', '')
     
     return flattened
