@@ -30,7 +30,7 @@ from openpyxl.formatting.rule import ColorScaleRule, CellIsRule
 # =============================================================================
 
 # Базовая папка проекта
-BASE_DIR = r"/Users/orionflash/Desktop/MyProject/Gen_Load_Game_Script"
+BASE_DIR = r"/Users/orionflash/Desktop/MyProject/Gen_Load_Game_Script/WORK"
 
 # Настройки логирования
 LOG_LEVEL = "DEBUG"  # Уровень детализации логов: "INFO" - основная информация, "DEBUG" - подробная отладочная информация
@@ -202,6 +202,7 @@ FUNCTION_CONFIGS = {
         "name": "LeadersForAdmin",  # Ключ: название скрипта для отображения
         "description": "Информация по загруженным в турнир данным об участниках",  # Ключ: описание назначения скрипта
         "active_operations": "both",  # Ключ: активные операции ("scripts_only", "json_only", "both")
+        "excel_freeze_row": 1,  # Ключ: номер строки для закрепления в Excel (1 = заголовок)
         "variants": {  # Ключ: варианты конфигурации (SIGMA/ALPHA)
             "sigma": {  # Ключ: вариант SIGMA (продакшн окружение)
                 "name": "LeadersForAdmin (SIGMA)",  # Ключ: название варианта
@@ -722,9 +723,27 @@ def flatten_leader_data(leader_data):
     flattened['indicatorValue_parsed'] = parse_float_safe(leader_data.get('indicatorValue', 0), f"indicatorValue for {flattened['fullName']}")
     flattened['successValue_parsed'] = parse_float_safe(leader_data.get('successValue', 0), f"successValue for {flattened['fullName']}")
     
+    # Обработка вложенной структуры divisionRatings
+    division_ratings = leader_data.get('divisionRatings', [])
+    
+    # Инициализируем колонки для каждой категории (BANK, TB, GOSB)
+    categories = ['BANK', 'TB', 'GOSB']
+    for category in categories:
+        flattened[f'{category}_groupId'] = ''
+        flattened[f'{category}_placeInRating'] = ''
+        flattened[f'{category}_ratingCategoryName'] = ''
+    
+    # Заполняем данные из divisionRatings
+    for rating in division_ratings:
+        group_code = rating.get('groupCode', '')
+        if group_code in categories:
+            flattened[f'{group_code}_groupId'] = rating.get('groupId', '')
+            flattened[f'{group_code}_placeInRating'] = rating.get('placeInRating', '')
+            flattened[f'{group_code}_ratingCategoryName'] = rating.get('ratingCategoryName', '')
+    
     return flattened
 
-def apply_excel_styling(workbook):
+def apply_excel_styling(workbook, freeze_row=1):
     """Применение стилей к Excel файлу"""
     for sheet_name in workbook.sheetnames:
         worksheet = workbook[sheet_name]
@@ -743,6 +762,18 @@ def apply_excel_styling(workbook):
             cell.fill = header_fill
             cell.font = header_font
             cell.alignment = header_alignment
+        
+        # Закрепление строк (если есть данные)
+        if worksheet.max_row > 1:
+            worksheet.freeze_panes = f"A{freeze_row + 1}"
+        
+        # Автофильтр для листа DATA
+        if sheet_name == 'DATA' and worksheet.max_row > 1:
+            # Получаем диапазон данных для автофильтра
+            max_col = worksheet.max_column
+            max_row = worksheet.max_row
+            filter_range = f"A1:{get_column_letter(max_col)}{max_row}"
+            worksheet.auto_filter.ref = filter_range
         
         # Автоматическая ширина столбцов
         for column in worksheet.columns:
@@ -1153,13 +1184,14 @@ def generate_rating_list_script(data_list=None):
 # =============================================================================
 
 @measure_time
-def convert_json_to_excel(input_json_path, output_excel_path):
+def convert_json_to_excel(input_json_path, output_excel_path, config_key=None):
     """
     Конвертация JSON файла в Excel
     
     Args:
         input_json_path (str): Путь к входному JSON файлу
         output_excel_path (str): Путь к выходному Excel файлу
+        config_key (str, optional): Ключ конфигурации для получения настроек Excel
         
     Returns:
         bool: True если конвертация успешна, False в противном случае
@@ -1255,15 +1287,17 @@ def convert_json_to_excel(input_json_path, output_excel_path):
             # Получаем workbook для применения стилей
             workbook = writer.book
             
-            # Применяем стили
-            if JSON_PROCESSING_CONFIG["apply_styling"]:
-                apply_excel_styling(workbook)
+            # Получаем настройки закрепления строк из конфигурации
+            freeze_row = 1  # По умолчанию закрепляем заголовок
+            if config_key and config_key in FUNCTION_CONFIGS:
+                freeze_row = FUNCTION_CONFIGS[config_key].get('excel_freeze_row', 1)
+            
+            # Применяем стили с настройками закрепления
+            apply_excel_styling(workbook, freeze_row)
             
             # Создаем дополнительные листы
-            if JSON_PROCESSING_CONFIG["create_summary"]:
-                create_summary_sheet(workbook, df)
-            if JSON_PROCESSING_CONFIG["create_statistics"]:
-                create_statistics_sheet(workbook, df)
+            create_summary_sheet(workbook, df)
+            create_statistics_sheet(workbook, df)
         
         logger.info(LOG_MESSAGES['json_excel_success'].format(file_path=output_excel_path))
         return True
@@ -1273,27 +1307,28 @@ def convert_json_to_excel(input_json_path, output_excel_path):
         return False
 
 @measure_time
-def convert_specific_json_file(file_name_without_extension):
+def convert_specific_json_file(file_name_without_extension, config_key=None):
     """
     Конвертирует конкретный JSON файл в Excel
     
     Args:
         file_name_without_extension (str): Имя файла без расширения
+        config_key (str, optional): Ключ конфигурации для получения настроек Excel
         
     Returns:
         bool: True если конвертация успешна, False в противном случае
     """
     try:
         # Формируем пути к файлам используя новую структуру
-        input_dir = os.path.join(BASE_DIR, SUBDIRECTORIES["INPUT"])
+        json_dir = os.path.join(BASE_DIR, SUBDIRECTORIES["JSON"])
         output_dir = os.path.join(BASE_DIR, SUBDIRECTORIES["OUTPUT"])
-        input_json_path = os.path.join(input_dir, f"{file_name_without_extension}.json")
+        input_json_path = os.path.join(json_dir, f"{file_name_without_extension}.json")
         output_excel_path = os.path.join(output_dir, f"{file_name_without_extension}.xlsx")
         
         logger.info(LOG_MESSAGES['json_file_processing'].format(file_name=file_name_without_extension))
         
         # Конвертируем файл
-        if convert_json_to_excel(input_json_path, output_excel_path):
+        if convert_json_to_excel(input_json_path, output_excel_path, config_key):
             logger.info(LOG_MESSAGES['json_excel_success'].format(file_path=output_excel_path))
             return True
         else:
@@ -1427,7 +1462,7 @@ def main():
                         if "json_file" in config:
                             json_file = config["json_file"]
                             logger.info(f"Обработка JSON файла: {json_file}")
-                            convert_specific_json_file(json_file)
+                            convert_specific_json_file(json_file, script_name)
                         else:
                             logger.warning(f"Для скрипта {script_name} не указан json_file")
                 else:
