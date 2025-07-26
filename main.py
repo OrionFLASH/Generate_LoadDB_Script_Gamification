@@ -13,10 +13,17 @@ import time
 import datetime
 import csv
 import re
+import json
+import pandas as pd
 from functools import wraps
 
 # Импорт библиотеки для работы с буфером обмена
 import pyperclip
+
+# Импорт библиотек для работы с Excel
+from openpyxl.styles import PatternFill, Font, Alignment
+from openpyxl.utils import get_column_letter
+from openpyxl.formatting.rule import ColorScaleRule, CellIsRule
 
 # =============================================================================
 # КОНСТАНТЫ И НАСТРОЙКИ ПРОГРАММЫ
@@ -32,15 +39,28 @@ INPUT_DIR = r"/Users/orionflash/Desktop/MyProject/Gen_Load_Game_Script/INPUT"  #
 OUTPUT_DIR = r"/Users/orionflash/Desktop/MyProject/Gen_Load_Game_Script/OUTPUT"  # Директория выходных файлов
 
 # Настройки обработки данных
-DATA_SOURCE = "file"  # "file" - из файла, "variable" - из переменной
-INPUT_FORMAT = "TXT"  # "TXT" - текстовый файл, "CSV" - CSV файл
+DATA_SOURCE = "external_file"  # "file" - из файла, "variable" - из переменной, "external_file" - из внешнего файла
+INPUT_FORMAT = "CSV"  # "TXT" - текстовый файл, "CSV" - CSV файл
 INPUT_FILENAME = "input_data.txt"  # Имя входного файла
 INPUT_FILE_EXTENSION = ".txt"  # Расширение входного файла
+
+# =============================================================================
+# НАСТРОЙКИ ОПЕРАЦИЙ
+# =============================================================================
+
+# Выбор активных операций
+# Доступные операции:
+# - "generate_scripts" - генерация скриптов
+# - "process_json" - обработка JSON файлов в Excel
+ACTIVE_OPERATIONS = [
+    "generate_scripts",  # Генерация скриптов
+    "process_json"       # Обработка JSON файлов в Excel
+]
 
 # Выбор активных скриптов для генерации
 # Раскомментируйте нужные скрипты для генерации
 ACTIVE_SCRIPTS = [
-    # "leaders_for_admin",  # Информация по участникам турнира
+    "leaders_for_admin",  # Информация по участникам турнира
     # "reward",             # Информация о наградах сотрудников
     # "profile",            # Профили сотрудников
     # "news_details",       # Детальная карточка новости
@@ -50,6 +70,31 @@ ACTIVE_SCRIPTS = [
     # "news_list",          # Список новостей
     # "rating_list"         # Рейтинг участников
 ]
+
+# Настройки обработки JSON файлов
+JSON_PROCESSING_CONFIG = {
+    "input_directory": "INPUT",  # Директория с JSON файлами
+    "output_directory": "OUTPUT",  # Директория для Excel файлов
+    "file_pattern": "*.json",  # Паттерн для поиска JSON файлов
+    "create_summary": True,  # Создавать лист SUMMARY
+    "create_statistics": True,  # Создавать лист STATISTICS
+    "apply_styling": True  # Применять стили к Excel
+}
+
+# Названия листов для экспорта Excel
+EXCEL_SHEET_NAMES = {
+    "data": "DATA",
+    "summary": "SUMMARY", 
+    "statistics": "STATISTICS"
+}
+
+# Цвета для оформления Excel
+EXCEL_COLORS = {
+    "header": "366092",
+    "subheader": "9BC2E6",
+    "alternate": "E7E6E6",
+    "highlight": "FFEB9C"
+}
 
 # Настройки для TXT файлов
 # Массив всех возможных разделителей для текстовых файлов
@@ -141,18 +186,35 @@ FUNCTION_CONFIGS = {
     "leaders_for_admin": {
         "name": "LeadersForAdmin",
         "description": "Информация по загруженным в турнир данным об участниках",
-        "domain": "tournament.example.com",
-        "params": {
-            "api_endpoint": "/api/tournament/leaders",
-            "include_stats": True,
-            "format": "json",
-            "limit": 1000
+        "variants": {
+            "sigma": {
+                "name": "LeadersForAdmin (SIGMA)",
+                "description": "Информация по загруженным в турнир данным об участниках - SIGMA",
+                "domain": "https://salesheroes.sberbank.ru",
+                "params": {
+                    "api_path": "/bo/rmkib.gamification/api/v1/tournaments/",
+                    "service": "leadersForAdmin",
+                    "page_param": "pageNum=1"
+                }
+            },
+            "alpha": {
+                "name": "LeadersForAdmin (ALPHA)",
+                "description": "Информация по загруженным в турнир данным об участниках - ALPHA",
+                "domain": "https://efs-our-business-prom.omega.sbrf.ru",
+                "params": {
+                    "api_path": "/bo/rmkib.gamification/api/v1/tournaments/",
+                    "service": "leadersForAdmin",
+                    "page_param": "pageNum=1"
+                }
+            }
         },
-        "data_source": "file",  # Источник данных: "file" или "variable"
-        "input_format": "CSV",  # Формат входных данных: "CSV" или "TXT"
-        "csv_column": "participant_id",  # Название столбца в CSV
-        "csv_delimiter": ";",  # Разделитель в CSV
-        "csv_encoding": "utf-8"  # Кодировка CSV
+        "selected_variant": "sigma",  # "sigma" или "alpha"
+        "data_source": "external_file",
+        "input_format": "CSV",
+        "csv_column": "TOURNAMENT_CODE",
+        "csv_delimiter": ";",
+        "csv_encoding": "utf-8",
+        "input_file": "TOURNAMENT-SCHEDULE (PROM) 2025-07-25 v6.csv"
     },
     "reward": {
         "name": "REWARD",
@@ -502,6 +564,17 @@ def get_data():
         # Загрузка данных из файла
         filepath = os.path.join(INPUT_DIR, INPUT_FILENAME)
         return load_data_from_file(filepath, INPUT_FORMAT)
+    elif DATA_SOURCE == "external_file":
+        # Загрузка данных из внешнего файла (для LeadersForAdmin)
+        config = FUNCTION_CONFIGS["leaders_for_admin"]
+        filepath = os.path.join(INPUT_DIR, config["input_file"])
+        return load_data_from_file(
+            filepath, 
+            config["input_format"],
+            config["csv_delimiter"],
+            config["csv_encoding"],
+            config["csv_column"]
+        )
     else:
         # Использование тестовых данных
         logger.info(LOG_MESSAGES['using_test_data'].format(count=len(TEST_DATA_LIST)))
@@ -527,6 +600,169 @@ def copy_to_clipboard(text):
     except Exception as e:
         logger.error(LOG_MESSAGES['clipboard_error'].format(error=str(e)))
         return False
+
+# =============================================================================
+# ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ДЛЯ JSON И EXCEL
+# =============================================================================
+
+def parse_float_safe(val, context=None):
+    """Безопасное преобразование в float с обработкой европейского формата"""
+    if val is None or val == "":
+        return None
+    try:
+        # Обработка европейского формата чисел (запятая вместо точки)
+        if isinstance(val, str):
+            # Удаляем пробелы и заменяем запятую на точку
+            val = val.replace(' ', '').replace(',', '.')
+            # Удаляем неразрывные пробелы и другие специальные символы
+            val = val.replace('\u2009', '').replace('\u00a0', '')
+        return float(val)
+    except (ValueError, TypeError) as ex:
+        if context:
+            logger.warning(f"Ошибка преобразования '{val}' в float: {ex} | Context: {context}")
+        return None
+
+def flatten_leader_data(leader_data):
+    """Преобразование данных лидера в плоскую структуру"""
+    flattened = {}
+    
+    # Основные поля из структуры LeadersForAdmin
+    flattened['employeeNumber'] = leader_data.get('employeeNumber', '')
+    flattened['lastName'] = leader_data.get('lastName', '')
+    flattened['firstName'] = leader_data.get('firstName', '')
+    flattened['indicatorValue'] = leader_data.get('indicatorValue', '')
+    flattened['successValue'] = leader_data.get('successValue', '')
+    flattened['terDivisionName'] = leader_data.get('terDivisionName', '')
+    flattened['employeeStatus'] = leader_data.get('employeeStatus', '')
+    flattened['businessBlock'] = leader_data.get('businessBlock', '')
+    
+    # Создаем полное имя
+    flattened['fullName'] = f"{leader_data.get('lastName', '')} {leader_data.get('firstName', '')}".strip()
+    
+    # Парсим числовые значения
+    flattened['indicatorValue_parsed'] = parse_float_safe(leader_data.get('indicatorValue', 0), f"indicatorValue for {flattened['fullName']}")
+    flattened['successValue_parsed'] = parse_float_safe(leader_data.get('successValue', 0), f"successValue for {flattened['fullName']}")
+    
+    return flattened
+
+def apply_excel_styling(workbook):
+    """Применение стилей к Excel файлу"""
+    for sheet_name in workbook.sheetnames:
+        worksheet = workbook[sheet_name]
+        
+        # Стили для заголовков
+        header_fill = PatternFill(start_color=EXCEL_COLORS["header"], end_color=EXCEL_COLORS["header"], fill_type="solid")
+        header_font = Font(color="FFFFFF", bold=True)
+        header_alignment = Alignment(horizontal="center", vertical="center")
+        
+        # Стили для подзаголовков
+        subheader_fill = PatternFill(start_color=EXCEL_COLORS["subheader"], end_color=EXCEL_COLORS["subheader"], fill_type="solid")
+        subheader_font = Font(bold=True)
+        
+        # Применение стилей к заголовкам
+        for cell in worksheet[1]:
+            cell.fill = header_fill
+            cell.font = header_font
+            cell.alignment = header_alignment
+        
+        # Автоматическая ширина столбцов
+        for column in worksheet.columns:
+            max_length = 0
+            column_letter = get_column_letter(column[0].column)
+            
+            for cell in column:
+                try:
+                    if len(str(cell.value)) > max_length:
+                        max_length = len(str(cell.value))
+                except:
+                    pass
+            
+            adjusted_width = min(max_length + 2, 50)
+            worksheet.column_dimensions[column_letter].width = adjusted_width
+
+def create_summary_sheet(workbook, data_df):
+    """Создание листа с сводной информацией"""
+    if 'DATA' not in workbook.sheetnames:
+        return
+    
+    # Создаем лист SUMMARY
+    if 'SUMMARY' in workbook.sheetnames:
+        workbook.remove(workbook['SUMMARY'])
+    summary_sheet = workbook.create_sheet('SUMMARY')
+    
+    # Основная статистика
+    summary_data = [
+        ['Параметр', 'Значение'],
+        ['Общее количество участников', len(data_df)],
+        ['Участники с номером сотрудника', len(data_df[data_df['employeeNumber'].notna() & (data_df['employeeNumber'] != '')])],
+        ['Участники со статусом CONTESTANT', len(data_df[data_df['employeeStatus'] == 'CONTESTANT'])],
+        ['Среднее значение показателя', round(data_df['indicatorValue_parsed'].mean(), 2) if 'indicatorValue_parsed' in data_df.columns else 'N/A'],
+        ['Максимальное значение показателя', data_df['indicatorValue_parsed'].max() if 'indicatorValue_parsed' in data_df.columns else 'N/A'],
+        ['Минимальное значение показателя', data_df['indicatorValue_parsed'].min() if 'indicatorValue_parsed' in data_df.columns else 'N/A'],
+    ]
+    
+    # Добавляем данные в лист
+    for row_idx, row_data in enumerate(summary_data, 1):
+        for col_idx, value in enumerate(row_data, 1):
+            summary_sheet.cell(row=row_idx, column=col_idx, value=value)
+    
+    # Применяем стили
+    header_fill = PatternFill(start_color=EXCEL_COLORS["header"], end_color=EXCEL_COLORS["header"], fill_type="solid")
+    header_font = Font(color="FFFFFF", bold=True)
+    
+    for cell in summary_sheet[1]:
+        cell.fill = header_fill
+        cell.font = header_font
+
+def create_statistics_sheet(workbook, data_df):
+    """Создание листа со статистикой"""
+    if 'DATA' not in workbook.sheetnames:
+        return
+    
+    # Создаем лист STATISTICS
+    if 'STATISTICS' in workbook.sheetnames:
+        workbook.remove(workbook['STATISTICS'])
+    stats_sheet = workbook.create_sheet('STATISTICS')
+    
+    # Статистика по департаментам
+    if 'terDivisionName' in data_df.columns:
+        dept_stats = data_df['terDivisionName'].value_counts().reset_index()
+        dept_stats.columns = ['Территориальное подразделение', 'Количество участников']
+        
+        # Добавляем заголовок
+        stats_sheet.cell(row=1, column=1, value='Статистика по территориальным подразделениям')
+        stats_sheet.cell(row=1, column=1).font = Font(bold=True, size=14)
+        
+        # Добавляем данные
+        for row_idx, (_, row_data) in enumerate(dept_stats.iterrows(), 3):
+            stats_sheet.cell(row=row_idx, column=1, value=row_data['Территориальное подразделение'])
+            stats_sheet.cell(row=row_idx, column=2, value=row_data['Количество участников'])
+    
+    # Статистика по бизнес-блокам
+    if 'businessBlock' in data_df.columns:
+        block_stats = data_df['businessBlock'].value_counts().reset_index()
+        block_stats.columns = ['Бизнес-блок', 'Количество участников']
+        
+        # Добавляем заголовок
+        stats_sheet.cell(row=1, column=4, value='Статистика по бизнес-блокам')
+        stats_sheet.cell(row=1, column=4).font = Font(bold=True, size=14)
+        
+        # Добавляем данные
+        for row_idx, (_, row_data) in enumerate(block_stats.iterrows(), 3):
+            stats_sheet.cell(row=row_idx, column=4, value=row_data['Бизнес-блок'])
+            stats_sheet.cell(row=row_idx, column=5, value=row_data['Количество участников'])
+    
+    # Применяем стили
+    header_fill = PatternFill(start_color=EXCEL_COLORS["subheader"], end_color=EXCEL_COLORS["subheader"], fill_type="solid")
+    header_font = Font(bold=True)
+    
+    for cell in stats_sheet[3]:
+        cell.fill = header_fill
+        cell.font = header_font
+
+# =============================================================================
+# ФУНКЦИИ ГЕНЕРАЦИИ СКРИПТОВ
+# =============================================================================
 
 @measure_time
 def generate_script_universal(config_key, data_list=None):
@@ -563,16 +799,125 @@ def generate_script_universal(config_key, data_list=None):
             data_list = TEST_DATA_LIST.copy()
     
     # Логирование процесса генерации
-    logger.debug(LOG_MESSAGES['script_generation'].format(script_name=config['name']))
-    logger.debug(LOG_MESSAGES['config_loaded'].format(script_name=config['name']))
+    if config_key == "leaders_for_admin":
+        selected_variant = config.get("selected_variant", "sigma")
+        variant_config = config["variants"][selected_variant]
+        logger.debug(LOG_MESSAGES['script_generation'].format(script_name=f"{config['name']} ({selected_variant.upper()})"))
+        logger.debug(LOG_MESSAGES['config_loaded'].format(script_name=f"{config['name']} ({selected_variant.upper()})"))
+        logger.debug(f"Выбранный вариант: {selected_variant.upper()}")
+    else:
+        logger.debug(LOG_MESSAGES['script_generation'].format(script_name=config['name']))
+        logger.debug(LOG_MESSAGES['config_loaded'].format(script_name=config['name']))
+    
     logger.debug(LOG_MESSAGES['data_source_selected'].format(
         source=config['data_source'], 
         format=config['input_format']
     ))
     
-    # Генерация JavaScript скрипта (заглушка)
-    # TODO: Реализовать реальную логику генерации скриптов
-    script = f"""
+    # Генерация JavaScript скрипта на основе типа
+    if config_key == "leaders_for_admin":
+        # Получение выбранного варианта
+        selected_variant = config.get("selected_variant", "sigma")
+        variant_config = config["variants"][selected_variant]
+        
+        # Специальная генерация для LeadersForAdmin
+        timestamp = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
+        script = f"""// ==UserScript==
+// Скрипт для DevTools. Выгрузка лидеров для всех Tournament ID (одна страница на турнир)
+// Вариант: {selected_variant.upper()}
+// Сгенерировано: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
+// Количество турниров: {len(data_list)}
+(async () => {{
+  // === Удаление photoData рекурсивно ===
+  function removePhotoData(obj) {{
+    if (Array.isArray(obj)) {{
+      obj.forEach(removePhotoData);
+    }} else if (obj && typeof obj === 'object') {{
+      Object.keys(obj).forEach(key => {{
+        if (key === 'photoData') {{
+          delete obj[key];
+        }} else {{
+          removePhotoData(obj[key]);
+        }}
+      }});
+    }}
+  }}
+
+  // === Генерация timestamp ===
+  function getTimestamp() {{
+    const d = new Date();
+    const pad = n => n.toString().padStart(2, '0');
+    return d.getFullYear().toString()
+      + pad(d.getMonth() + 1)
+      + pad(d.getDate())
+      + '-' + pad(d.getHours())
+      + pad(d.getMinutes())
+      + pad(d.getSeconds());
+  }}
+
+  const ids = {json.dumps(data_list, indent=2)};
+  const service = 'leadersForAdmin';
+  const BASE_URL = '{variant_config['domain']}{variant_config['params']['api_path']}';
+  const results = {{}};
+  let processed = 0, skipped = 0, errors = 0;
+  console.log('▶️ Всего к обработке:', ids.length, 'код(ов)');
+  console.log('🎯 Вариант:', '{selected_variant.upper()}');
+
+  for (let i = 0; i < ids.length; ++i) {{
+    const tid = ids[i];
+    const url = BASE_URL + tid + '/' + service + '?pageNum=1';
+    console.log(`⏳ [${{i+1}}/${{ids.length}}] Обрабатываем код: ${{tid}}`);
+    let resp, data;
+    try {{
+      resp = await fetch(url, {{
+        headers: {{ 'Accept': 'application/json', 'Cookie': document.cookie }}, credentials: 'include'
+      }});
+      if (!resp.ok) {{
+        console.warn(`❌ [${{i+1}}/${{ids.length}}] Код ${{tid}}: HTTP статус ${{resp.status}}`);
+        errors++;
+        continue;
+      }}
+      data = await resp.json();
+      // Число участников
+      let leadersCount = 0;
+      try {{
+        const leadersArr = data?.body?.tournament?.leaders || data?.body?.badge?.leaders;
+        if (Array.isArray(leadersArr)) {{
+          leadersCount = leadersArr.length;
+        }}
+      }} catch {{}}
+      if (leadersCount === 0) {{
+        console.log(`ℹ️ [${{i+1}}/${{ids.length}}] Код ${{tid}} пропущен: участников = 0`);
+        skipped++;
+        continue;
+      }}
+      console.log(`✅ [${{i+1}}/${{ids.length}}] Код ${{tid}}: успешно, участников: ${{leadersCount}}`);
+      results[tid] = [data];
+      processed++;
+      await new Promise(r => setTimeout(r, 5));
+    }} catch (e) {{
+      console.error(`❌ [${{i+1}}/${{ids.length}}] Код ${{tid}}: Ошибка запроса:`, e);
+      errors++;
+    }}
+  }}
+
+  console.log('🧹 Удаляем все поля photoData');
+  removePhotoData(results);
+
+  console.log('💾 Сохраняем файл ...');
+  const ts = getTimestamp();
+  const blob = new Blob([JSON.stringify(results, null, 2)], {{type: 'application/json'}});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = service + '_{selected_variant.upper()}_' + ts + '.json';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  console.log(`🏁 Обработка завершена. Всего: ${{ids.length}}. Успешно: ${{processed}}. Пропущено: ${{skipped}}. Ошибок: ${{errors}}. Файл скачан.`);
+}})();"""
+    else:
+        # Заглушка для остальных типов
+        script = f"""
 // JavaScript скрипт для {config['name']}
 // Описание: {config['description']}
 // Домен: {config['domain']}
@@ -708,6 +1053,159 @@ def generate_rating_list_script(data_list=None):
     return generate_script_universal("rating_list", data_list)
 
 # =============================================================================
+# ФУНКЦИИ ОБРАБОТКИ JSON В EXCEL
+# =============================================================================
+
+@measure_time
+def convert_json_to_excel(input_json_path, output_excel_path):
+    """
+    Конвертация JSON файла в Excel
+    
+    Args:
+        input_json_path (str): Путь к входному JSON файлу
+        output_excel_path (str): Путь к выходному Excel файлу
+        
+    Returns:
+        bool: True если конвертация успешна, False в противном случае
+    """
+    try:
+        logger.info(f"Начинаем конвертацию: {input_json_path} -> {output_excel_path}")
+        
+        # Проверка существования входного файла
+        if not os.path.exists(input_json_path):
+            logger.error(f"Входной файл не найден: {input_json_path}")
+            return False
+        
+        # Создание директории для выходного файла если не существует
+        output_dir = os.path.dirname(output_excel_path)
+        if output_dir and not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+            logger.info(f"Создана директория: {output_dir}")
+        
+        # Загрузка JSON данных
+        logger.info("Загружаем JSON данные...")
+        with open(input_json_path, 'r', encoding='utf-8') as f:
+            json_data = json.load(f)
+        
+        # Обработка данных
+        logger.info("Обрабатываем данные...")
+        leaders_data = []
+        
+        if isinstance(json_data, dict):
+            # Ищем данные в структуре LeadersForAdmin
+            for key, value in json_data.items():
+                if isinstance(value, list) and len(value) > 0:
+                    # Проверяем, содержит ли первый элемент данные о турнире
+                    first_item = value[0]
+                    if isinstance(first_item, dict) and 'body' in first_item:
+                        body = first_item['body']
+                        if 'tournament' in body:
+                            tournament = body['tournament']
+                            if 'leaders' in tournament:
+                                leaders_data = tournament['leaders']
+                                logger.info(f"Найдены данные лидеров в ключе: {key}, количество: {len(leaders_data)}")
+                                break
+        elif isinstance(json_data, list):
+            # Прямой список лидеров
+            leaders_data = json_data
+            logger.info(f"Прямой список лидеров, количество: {len(leaders_data)}")
+        else:
+            logger.error("Неверный формат JSON данных")
+            return False
+        
+        if not leaders_data:
+            logger.error("Не найдены данные лидеров в JSON файле")
+            return False
+        
+        # Преобразование данных в плоскую структуру
+        flattened_data = []
+        for leader in leaders_data:
+            flattened_leader = flatten_leader_data(leader)
+            flattened_data.append(flattened_leader)
+        
+        # Создание DataFrame
+        df = pd.DataFrame(flattened_data)
+        
+        if df.empty:
+            logger.warning("Нет данных для обработки")
+            return False
+        
+        logger.info(f"Обработано {len(df)} записей")
+        
+        # Создание Excel файла
+        logger.info("Создаем Excel файл...")
+        with pd.ExcelWriter(output_excel_path, engine='openpyxl') as writer:
+            # Основной лист с данными
+            df.to_excel(writer, sheet_name='DATA', index=False)
+            
+            # Получаем workbook для применения стилей
+            workbook = writer.book
+            
+            # Применяем стили
+            if JSON_PROCESSING_CONFIG["apply_styling"]:
+                apply_excel_styling(workbook)
+            
+            # Создаем дополнительные листы
+            if JSON_PROCESSING_CONFIG["create_summary"]:
+                create_summary_sheet(workbook, df)
+            if JSON_PROCESSING_CONFIG["create_statistics"]:
+                create_statistics_sheet(workbook, df)
+        
+        logger.info(f"Excel файл успешно создан: {output_excel_path}")
+        return True
+        
+    except Exception as e:
+        logger.error(f"Ошибка при конвертации: {str(e)}")
+        return False
+
+@measure_time
+def process_json_files_in_input():
+    """
+    Обрабатывает все JSON файлы в INPUT директории согласно настройкам
+    
+    Ищет JSON файлы с данными LeadersForAdmin и конвертирует их в Excel
+    """
+    try:
+        logger.info("Поиск JSON файлов в INPUT директории")
+        
+        # Проверяем существование INPUT директории
+        if not os.path.exists(INPUT_DIR):
+            logger.error(f"INPUT директория не найдена: {INPUT_DIR}")
+            return []
+        
+        # Ищем JSON файлы
+        json_files = []
+        for file in os.listdir(INPUT_DIR):
+            if file.endswith('.json') and 'leadersForAdmin' in file:
+                json_files.append(os.path.join(INPUT_DIR, file))
+        
+        if not json_files:
+            logger.info("JSON файлы с данными LeadersForAdmin не найдены")
+            return []
+        
+        logger.info(f"Найдено JSON файлов: {len(json_files)}")
+        
+        # Обрабатываем каждый файл
+        processed_files = []
+        for json_file in json_files:
+            logger.info(f"Обработка файла: {os.path.basename(json_file)}")
+            
+            # Создаем имя выходного файла
+            base_name = os.path.splitext(os.path.basename(json_file))[0]
+            output_file = os.path.join(OUTPUT_DIR, f"{base_name}.xlsx")
+            
+            # Конвертируем файл
+            if convert_json_to_excel(json_file, output_file):
+                processed_files.append(output_file)
+        
+        logger.info(f"Обработано файлов: {len(processed_files)}")
+        return processed_files
+        
+    except Exception as e:
+        logger.error(f"Ошибка при обработке JSON файлов: {e}")
+        return []
+
+# =============================================================================
 # ФУНКЦИИ ВЫВОДА СТАТИСТИКИ
 # =============================================================================
 
@@ -790,21 +1288,72 @@ def main():
     logger.info("=" * 70)
     
     try:
-        # Получение данных (для общего использования)
-        data_list = get_data()
-        logger.info(LOG_MESSAGES['data_received'].format(count=len(data_list)))
+        # Выполнение операций согласно настройкам ACTIVE_OPERATIONS
+        logger.info(f"Активные операции: {', '.join(ACTIVE_OPERATIONS)}")
         
-        # Генерация скриптов согласно настройкам ACTIVE_SCRIPTS
-        if ACTIVE_SCRIPTS:
-            logger.info(f"Активные скрипты для генерации: {', '.join(ACTIVE_SCRIPTS)}")
-            for script_name in ACTIVE_SCRIPTS:
-                if script_name in FUNCTION_CONFIGS:
-                    logger.info(LOG_MESSAGES['selected_script'].format(script_name=script_name))
-                    generate_script_universal(script_name)
-                else:
-                    logger.error(f"Неизвестный скрипт: {script_name}")
+        # Операция: Генерация скриптов
+        if "generate_scripts" in ACTIVE_OPERATIONS:
+            logger.info("=== ВЫПОЛНЕНИЕ ОПЕРАЦИИ: ГЕНЕРАЦИЯ СКРИПТОВ ===")
+            
+            # Получение данных (для генерации скриптов)
+            data_list = get_data()
+            logger.info(LOG_MESSAGES['data_received'].format(count=len(data_list)))
+            
+            # Генерация скриптов согласно настройкам ACTIVE_SCRIPTS
+            if ACTIVE_SCRIPTS:
+                logger.info(f"Активные скрипты для генерации: {', '.join(ACTIVE_SCRIPTS)}")
+                for script_name in ACTIVE_SCRIPTS:
+                    if script_name == "leaders_for_admin":
+                        logger.info(LOG_MESSAGES['selected_script'].format(script_name=script_name))
+                        generate_leaders_for_admin_script(data_list)
+                    elif script_name == "reward":
+                        logger.info(LOG_MESSAGES['selected_script'].format(script_name=script_name))
+                        generate_reward_script(data_list)
+                    elif script_name == "profile":
+                        logger.info(LOG_MESSAGES['selected_script'].format(script_name=script_name))
+                        generate_profile_script(data_list)
+                    elif script_name == "news_details":
+                        logger.info(LOG_MESSAGES['selected_script'].format(script_name=script_name))
+                        generate_news_details_script(data_list)
+                    elif script_name == "address_book_tn":
+                        logger.info(LOG_MESSAGES['selected_script'].format(script_name=script_name))
+                        generate_address_book_tn_script(data_list)
+                    elif script_name == "address_book_dev":
+                        logger.info(LOG_MESSAGES['selected_script'].format(script_name=script_name))
+                        generate_address_book_dev_script(data_list)
+                    elif script_name == "orders":
+                        logger.info(LOG_MESSAGES['selected_script'].format(script_name=script_name))
+                        generate_orders_script(data_list)
+                    elif script_name == "news_list":
+                        logger.info(LOG_MESSAGES['selected_script'].format(script_name=script_name))
+                        generate_news_list_script(data_list)
+                    elif script_name == "rating_list":
+                        logger.info(LOG_MESSAGES['selected_script'].format(script_name=script_name))
+                        generate_rating_list_script(data_list)
+                    elif script_name in FUNCTION_CONFIGS:
+                        logger.info(LOG_MESSAGES['selected_script'].format(script_name=script_name))
+                        generate_script_universal(script_name, data_list)
+                    else:
+                        logger.error(f"Неизвестный скрипт: {script_name}")
+            else:
+                logger.info("Нет активных скриптов для генерации. Настройте ACTIVE_SCRIPTS.")
         else:
-            logger.info("Нет активных скриптов для генерации. Настройте ACTIVE_SCRIPTS.")
+            logger.info("Генерация скриптов отключена (не включена в ACTIVE_OPERATIONS)")
+        
+        # Операция: Обработка JSON файлов в Excel
+        if "process_json" in ACTIVE_OPERATIONS:
+            logger.info("=== ВЫПОЛНЕНИЕ ОПЕРАЦИИ: ОБРАБОТКА JSON В EXCEL ===")
+            logger.info("Начинаем обработку JSON файлов в Excel...")
+            processed_excel_files = process_json_files_in_input()
+            
+            if processed_excel_files:
+                logger.info(f"Обработано Excel файлов: {len(processed_excel_files)}")
+                for excel_file in processed_excel_files:
+                    logger.info(f"Создан Excel файл: {excel_file}")
+            else:
+                logger.info("JSON файлы для обработки не найдены")
+        else:
+            logger.info("Обработка JSON файлов отключена (не включена в ACTIVE_OPERATIONS)")
             
         # Альтернативный способ - ручной вызов конкретных функций
         # Раскомментируйте нужные строки для тестирования
