@@ -29,6 +29,9 @@
 # НЕ игнорировать .gitignore
 !.gitignore
 
+# НЕ игнорировать скрипт активации локального окружения
+!activate_local.sh
+
 # Игнорировать временные и системные файлы
 __pycache__/
 *.py[cod]
@@ -67,6 +70,9 @@ MANIFEST
 /INPUT/
 /OUTPUT/
 conda_packages.txt
+
+# Игнорировать локальное окружение
+local_env/
 
 # Игнорировать системные файлы macOS
 .DS_Store
