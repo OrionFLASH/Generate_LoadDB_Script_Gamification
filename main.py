@@ -92,12 +92,7 @@ JSON_PROCESSING_CONFIG = {
     "apply_styling": True           # Ключ: применять цветовое оформление и форматирование к Excel файлу
 }
 
-# Список JSON файлов для обработки (имена без расширения)
-JSON_FILES_TO_PROCESS = [
-    "leadersForAdmin",  # Ключ: файл с данными лидеров для админа
-    # Добавьте другие файлы по необходимости
-    # "another_file_name",  # Ключ: описание другого файла
-]
+
 
 # Названия листов для экспорта Excel
 # Словарь с названиями листов, которые будут созданы в Excel файле
@@ -258,7 +253,8 @@ FUNCTION_CONFIGS = {
         "csv_column": "TOURNAMENT_CODE",  # Ключ: название столбца для извлечения данных
         "csv_delimiter": ";",  # Ключ: разделитель в CSV файле
         "csv_encoding": "utf-8",  # Ключ: кодировка CSV файла
-        "input_file": "TOURNAMENT-SCHEDULE (PROM) 2025-07-25 v6"  # Ключ: имя входного файла (без расширения)
+        "input_file": "TOURNAMENT-SCHEDULE (PROM) 2025-07-25 v6",  # Ключ: имя входного файла (без расширения)
+        "json_file": "leadersForAdmin"  # Ключ: имя JSON файла для обработки (без расширения)
     },
     "reward": {  # Ключ: конфигурация для скрипта REWARD (информация о наградах сотрудников)
         "name": "REWARD",  # Ключ: название скрипта для отображения
@@ -274,7 +270,8 @@ FUNCTION_CONFIGS = {
         "input_format": "CSV",  # Ключ: формат входного файла
         "csv_column": "employee_id",  # Ключ: название столбца для извлечения данных
         "csv_delimiter": ";",  # Ключ: разделитель в CSV файле
-        "csv_encoding": "utf-8"  # Ключ: кодировка CSV файла
+        "csv_encoding": "utf-8",  # Ключ: кодировка CSV файла
+        "json_file": "reward"  # Ключ: имя JSON файла для обработки (без расширения)
     },
     "profile": {  # Ключ: конфигурация для скрипта PROFILE (профили сотрудников)
         "name": "PROFILE",  # Ключ: название скрипта для отображения
@@ -290,7 +287,8 @@ FUNCTION_CONFIGS = {
         "input_format": "TXT",  # Ключ: формат входного файла
         "csv_column": "profile_id",  # Ключ: название столбца для извлечения данных
         "csv_delimiter": ";",  # Ключ: разделитель в CSV файле
-        "csv_encoding": "utf-8"  # Ключ: кодировка CSV файла
+        "csv_encoding": "utf-8",  # Ключ: кодировка CSV файла
+        "json_file": "profile"  # Ключ: имя JSON файла для обработки (без расширения)
     },
     "news_details": {  # Ключ: конфигурация для скрипта NewsDetails (детальная карточка новости)
         "name": "NewsDetails",  # Ключ: название скрипта для отображения
@@ -306,7 +304,8 @@ FUNCTION_CONFIGS = {
         "input_format": "TXT",  # Ключ: формат входного файла
         "csv_column": "news_id",  # Ключ: название столбца для извлечения данных
         "csv_delimiter": ";",  # Ключ: разделитель в CSV файле
-        "csv_encoding": "utf-8"  # Ключ: кодировка CSV файла
+        "csv_encoding": "utf-8",  # Ключ: кодировка CSV файла
+        "json_file": "news_details"  # Ключ: имя JSON файла для обработки (без расширения)
     },
     "address_book_tn": {  # Ключ: конфигурация для скрипта AdressBookTN (карточка сотрудника по табельному номеру)
         "name": "AdressBookTN",  # Ключ: название скрипта для отображения
@@ -322,7 +321,8 @@ FUNCTION_CONFIGS = {
         "input_format": "CSV",  # Ключ: формат входного файла
         "csv_column": "employee_number",  # Ключ: название столбца для извлечения данных
         "csv_delimiter": ";",  # Ключ: разделитель в CSV файле
-        "csv_encoding": "utf-8"  # Ключ: кодировка CSV файла
+        "csv_encoding": "utf-8",  # Ключ: кодировка CSV файла
+        "json_file": "address_book_tn"  # Ключ: имя JSON файла для обработки (без расширения)
     },
     "address_book_dev": {  # Ключ: конфигурация для скрипта AdressBookDev (карточка подразделения)
         "name": "AdressBookDev",  # Ключ: название скрипта для отображения
@@ -338,7 +338,8 @@ FUNCTION_CONFIGS = {
         "input_format": "CSV",  # Ключ: формат входного файла
         "csv_column": "department_id",  # Ключ: название столбца для извлечения данных
         "csv_delimiter": ";",  # Ключ: разделитель в CSV файле
-        "csv_encoding": "utf-8"  # Ключ: кодировка CSV файла
+        "csv_encoding": "utf-8",  # Ключ: кодировка CSV файла
+        "json_file": "address_book_dev"  # Ключ: имя JSON файла для обработки (без расширения)
     },
     "orders": {  # Ключ: конфигурация для скрипта Orders (список сотрудников с преференциями)
         "name": "Orders",  # Ключ: название скрипта для отображения
@@ -354,7 +355,8 @@ FUNCTION_CONFIGS = {
         "input_format": "CSV",  # Ключ: формат входного файла
         "csv_column": "employee_id",  # Ключ: название столбца для извлечения данных
         "csv_delimiter": ";",  # Ключ: разделитель в CSV файле
-        "csv_encoding": "utf-8"  # Ключ: кодировка CSV файла
+        "csv_encoding": "utf-8",  # Ключ: кодировка CSV файла
+        "json_file": "orders"  # Ключ: имя JSON файла для обработки (без расширения)
     },
     "news_list": {  # Ключ: конфигурация для скрипта NewsList (список новостей)
         "name": "NewsList",  # Ключ: название скрипта для отображения
@@ -370,7 +372,8 @@ FUNCTION_CONFIGS = {
         "input_format": "TXT",  # Ключ: формат входного файла
         "csv_column": "news_category",  # Ключ: название столбца для извлечения данных
         "csv_delimiter": ";",  # Ключ: разделитель в CSV файле
-        "csv_encoding": "utf-8"  # Ключ: кодировка CSV файла
+        "csv_encoding": "utf-8",  # Ключ: кодировка CSV файла
+        "json_file": "news_list"  # Ключ: имя JSON файла для обработки (без расширения)
     },
     "rating_list": {  # Ключ: конфигурация для скрипта RaitingList (рейтинг участников)
         "name": "RaitingList",  # Ключ: название скрипта для отображения
@@ -387,7 +390,8 @@ FUNCTION_CONFIGS = {
         "input_format": "CSV",  # Ключ: формат входного файла
         "csv_column": "participant_id",  # Ключ: название столбца для извлечения данных
         "csv_delimiter": ";",  # Ключ: разделитель в CSV файле
-        "csv_encoding": "utf-8"  # Ключ: кодировка CSV файла
+        "csv_encoding": "utf-8",  # Ключ: кодировка CSV файла
+        "json_file": "rating_list"  # Ключ: имя JSON файла для обработки (без расширения)
     }
 }
 
@@ -1374,11 +1378,19 @@ def main():
         if "process_json" in ACTIVE_OPERATIONS:
             logger.info("=== ВЫПОЛНЕНИЕ ОПЕРАЦИИ: ОБРАБОТКА JSON В EXCEL ===")
             
-            if JSON_FILES_TO_PROCESS:
-                logger.info(f"JSON файлы для обработки: {', '.join(JSON_FILES_TO_PROCESS)}")
+            # Собираем JSON файлы из конфигураций активных скриптов
+            json_files_to_process = []
+            for script_name in ACTIVE_SCRIPTS:
+                if script_name in FUNCTION_CONFIGS and "json_file" in FUNCTION_CONFIGS[script_name]:
+                    json_file = FUNCTION_CONFIGS[script_name]["json_file"]
+                    if json_file not in json_files_to_process:
+                        json_files_to_process.append(json_file)
+            
+            if json_files_to_process:
+                logger.info(f"JSON файлы для обработки: {', '.join(json_files_to_process)}")
                 processed_count = 0
                 
-                for file_name in JSON_FILES_TO_PROCESS:
+                for file_name in json_files_to_process:
                     if convert_specific_json_file(file_name):
                         processed_count += 1
                 
