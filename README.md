@@ -244,7 +244,8 @@ FUNCTION_CONFIGS = {
         "csv_delimiter": ";",  # Ключ: разделитель в CSV файле
         "csv_encoding": "utf-8",  # Ключ: кодировка CSV файла
         "input_file": "TOURNAMENT-SCHEDULE (PROM) 2025-07-25 v6",  # Ключ: имя входного файла (без расширения)
-        "json_file": "leadersForAdmin_SIGMA_20250726-192035"  # Ключ: имя JSON файла для обработки (без расширения)
+        "json_file": "leadersForAdmin_SIGMA_20250726-192035",  # Ключ: имя JSON файла для обработки (без расширения)
+        "excel_freeze_row": 1  # Ключ: номер строки для закрепления в Excel (1 = заголовок)
     }
 }
 ```
@@ -318,7 +319,27 @@ FUNCTION_CONFIGS = {
               "successValue": "...",
               "terDivisionName": "...",
               "employeeStatus": "...",
-              "businessBlock": "..."
+              "businessBlock": "...",
+              "divisionRatings": [
+                {
+                  "groupCode": "BANK",
+                  "groupId": "0",
+                  "placeInRating": "406",
+                  "ratingCategoryName": "Нужно поднажать"
+                },
+                {
+                  "groupCode": "GOSB",
+                  "groupId": "8636",
+                  "placeInRating": "2",
+                  "ratingCategoryName": "Нужно поднажать"
+                },
+                {
+                  "groupCode": "TB",
+                  "groupId": "70",
+                  "placeInRating": "25",
+                  "ratingCategoryName": "Нужно поднажать"
+                }
+              ]
             }
           ]
         }
@@ -327,6 +348,22 @@ FUNCTION_CONFIGS = {
   ]
 }
 ```
+
+### Обработка divisionRatings
+
+Программа автоматически парсит вложенную структуру `divisionRatings` и создает отдельные колонки для каждой категории:
+
+- **BANK_groupId** - ID группы для категории BANK
+- **BANK_placeInRating** - место в рейтинге для категории BANK  
+- **BANK_ratingCategoryName** - название категории рейтинга для BANK
+- **TB_groupId** - ID группы для категории TB
+- **TB_placeInRating** - место в рейтинге для категории TB
+- **TB_ratingCategoryName** - название категории рейтинга для TB
+- **GOSB_groupId** - ID группы для категории GOSB
+- **GOSB_placeInRating** - место в рейтинге для категории GOSB
+- **GOSB_ratingCategoryName** - название категории рейтинга для GOSB
+
+Категория определяется по полю `groupCode` в каждом элементе массива `divisionRatings`.
 
 ## Выходные данные Excel
 
@@ -341,6 +378,10 @@ FUNCTION_CONFIGS = {
 - employeeStatus - статус сотрудника
 - businessBlock - бизнес-блок
 - indicatorValue_parsed, successValue_parsed - числовые значения
+- **Колонки divisionRatings** - данные по категориям BANK, TB, GOSB:
+  - BANK_groupId, TB_groupId, GOSB_groupId - ID групп
+  - BANK_placeInRating, TB_placeInRating, GOSB_placeInRating - места в рейтингах
+  - BANK_ratingCategoryName, TB_ratingCategoryName, GOSB_ratingCategoryName - названия категорий
 
 ### Лист SUMMARY
 Сводная статистика:
@@ -468,6 +509,10 @@ SUMMARY - ИТОГОВАЯ СТАТИСТИКА РАБОТЫ ПРОГРАММЫ
 - ✅ Автоматическое копирование в буфер обмена
 - ✅ Гибкая настройка операций для каждого скрипта
 - ✅ Поддержка локального окружения Python
+- ✅ Парсинг вложенной структуры divisionRatings
+- ✅ Автоматическое закрепление строк в Excel
+- ✅ Автофильтр для листа DATA
+- ✅ Настраиваемые параметры Excel через конфигурацию
 
 ## Автор
 
@@ -475,4 +520,4 @@ OrionFLASH
 
 ## Версия
 
-2.1.0 - Обновленная версия с улучшенной системой конфигурации и поддержкой локального окружения 
+2.2.0 - Версия с поддержкой парсинга divisionRatings и настройками Excel 
