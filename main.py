@@ -235,7 +235,7 @@ FUNCTION_CONFIGS = {
         "input_file": "TOURNAMENT-SCHEDULE (PROM) 2025-07-25 v6",  # Ключ: имя входного файла (без расширения)
         "json_file": "leadersForAdmin_SIGMA_20250726-192035",  # Ключ: имя JSON файла для обработки (без расширения)
         "excel_file": "LeadersForAdmin_Excel",  # Ключ: имя Excel файла для создания (без расширения)
-        "excel_freeze_row": 1  # Ключ: номер строки для закрепления в Excel (1 = заголовок)
+        "excel_freeze_cell": "B2"  # Ключ: ячейка для закрепления в Excel (B2 = первая строка и первая колонка)
     },
     "reward": {  # Ключ: конфигурация для скрипта REWARD (информация о наградах сотрудников)
         "name": "REWARD",  # Ключ: название скрипта для отображения
@@ -746,7 +746,7 @@ def flatten_leader_data(leader_data):
     
     return flattened
 
-def apply_excel_styling(workbook, freeze_row=1):
+def apply_excel_styling(workbook, freeze_cell="B2"):
     """Применение стилей к Excel файлу"""
     for sheet_name in workbook.sheetnames:
         worksheet = workbook[sheet_name]
@@ -766,9 +766,9 @@ def apply_excel_styling(workbook, freeze_row=1):
             cell.font = header_font
             cell.alignment = header_alignment
         
-        # Закрепление строк (если есть данные)
+        # Закрепление строк и столбцов (если есть данные)
         if worksheet.max_row > 1:
-            worksheet.freeze_panes = f"A{freeze_row + 1}"
+            worksheet.freeze_panes = freeze_cell
         
         # Автофильтр для листа DATA
         if sheet_name == 'DATA' and worksheet.max_row > 1:
@@ -1290,13 +1290,13 @@ def convert_json_to_excel(input_json_path, output_excel_path, config_key=None):
             # Получаем workbook для применения стилей
             workbook = writer.book
             
-            # Получаем настройки закрепления строк из конфигурации
-            freeze_row = 1  # По умолчанию закрепляем заголовок
+            # Получаем настройки закрепления из конфигурации
+            freeze_cell = "B2"  # По умолчанию закрепляем первую строку и первую колонку
             if config_key and config_key in FUNCTION_CONFIGS:
-                freeze_row = FUNCTION_CONFIGS[config_key].get('excel_freeze_row', 1)
+                freeze_cell = FUNCTION_CONFIGS[config_key].get('excel_freeze_cell', "B2")
             
             # Применяем стили с настройками закрепления
-            apply_excel_styling(workbook, freeze_row)
+            apply_excel_styling(workbook, freeze_cell)
             
             # Создаем дополнительные листы
             create_summary_sheet(workbook, df)
