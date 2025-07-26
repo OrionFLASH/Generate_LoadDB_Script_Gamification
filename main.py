@@ -35,7 +35,7 @@ LOG_DIR = r"/Users/orionflash/Desktop/MyProject/Gen_Load_Game_Script/LOGS"  # А
 LOG_FILENAME_BASE = "game_script_generator"  # Базовое имя файла лога (к нему добавляется дата и время)
 
 # Настройки входных и выходных данных
-INPUT_DIR = r"/Users/orionflash/Desktop/MyProject/Gen_Load_Game_Script/INPUT"  # Абсолютный путь к директории с входными файлами (CSV, TXT, JSON)
+INPUT_DIR = r"/Users/orionflash/Desktop/MyProject/Gen_Load_Game_Script/INPUT"  # Абсолютный путь к директории с входными файлами (CSV, TXT)
 OUTPUT_DIR = r"/Users/orionflash/Desktop/MyProject/Gen_Load_Game_Script/OUTPUT"  # Абсолютный путь к директории для сохранения сгенерированных файлов
 
 # Настройки обработки данных
@@ -85,13 +85,19 @@ ACTIVE_SCRIPTS = [
 # Настройки обработки JSON файлов
 # Конфигурация для конвертации JSON файлов в Excel с дополнительными возможностями
 JSON_PROCESSING_CONFIG = {
-    "input_directory": "INPUT",     # Ключ: директория для поиска JSON файлов (относительно корня проекта)
-    "output_directory": "OUTPUT",   # Ключ: директория для сохранения Excel файлов (относительно корня проекта)
-    "file_pattern": "*.json",       # Ключ: паттерн для поиска JSON файлов (поддерживает wildcards)
+    "input_directory": r"/Users/orionflash/Desktop/MyProject/Gen_Load_Game_Script/INPUT",     # Ключ: директория для поиска JSON файлов (абсолютный путь)
+    "output_directory": r"/Users/orionflash/Desktop/MyProject/Gen_Load_Game_Script/OUTPUT",   # Ключ: директория для сохранения Excel файлов (абсолютный путь)
     "create_summary": True,         # Ключ: создавать лист SUMMARY с общей сводкой данных
     "create_statistics": True,      # Ключ: создавать лист STATISTICS с аналитическими данными
     "apply_styling": True           # Ключ: применять цветовое оформление и форматирование к Excel файлу
 }
+
+# Список JSON файлов для обработки (имена без расширения)
+JSON_FILES_TO_PROCESS = [
+    "leadersForAdmin",  # Ключ: файл с данными лидеров для админа
+    # Добавьте другие файлы по необходимости
+    # "another_file_name",  # Ключ: описание другого файла
+]
 
 # Названия листов для экспорта Excel
 # Словарь с названиями листов, которые будут созданы в Excel файле
@@ -192,7 +198,25 @@ LOG_MESSAGES = {
     # Сообщения о обработке файлов
     "csv_processing": "Обработка CSV: разделитель '{delimiter}', кодировка '{encoding}', столбец '{column}'",  # Ключ: обработка CSV файла
     "txt_processing": "Обработка TXT: найдено разделителей {delimiters_count}",  # Ключ: обработка TXT файла
-    "data_source_selected": "Источник данных: {source} ({format})"  # Ключ: выбранный источник данных
+    "data_source_selected": "Источник данных: {source} ({format})",  # Ключ: выбранный источник данных
+    
+    # Сообщения о обработке JSON файлов
+    "json_conversion_start": "Начинаем конвертацию JSON: {input} -> {output}",  # Ключ: начало конвертации JSON
+    "json_file_not_found": "JSON файл не найден: {file_path}",  # Ключ: JSON файл не найден
+    "json_directory_created": "Создана директория: {directory}",  # Ключ: создана директория для JSON
+    "json_data_loading": "Загружаем JSON данные...",  # Ключ: загрузка JSON данных
+    "json_data_processing": "Обрабатываем JSON данные...",  # Ключ: обработка JSON данных
+    "json_leaders_found": "Найдены данные лидеров в ключе: {key}, количество: {count}",  # Ключ: найдены данные лидеров
+    "json_direct_leaders": "Прямой список лидеров, количество: {count}",  # Ключ: прямой список лидеров
+    "json_invalid_format": "Неверный формат JSON данных",  # Ключ: неверный формат JSON
+    "json_no_leaders": "Не найдены данные лидеров в JSON файле",  # Ключ: нет данных лидеров
+    "json_records_processed": "Обработано {count} записей",  # Ключ: количество обработанных записей
+    "json_excel_creation": "Создаем Excel файл...",  # Ключ: создание Excel файла
+    "json_excel_success": "Excel файл успешно создан: {file_path}",  # Ключ: Excel файл создан
+    "json_conversion_error": "Ошибка при конвертации JSON: {error}",  # Ключ: ошибка конвертации JSON
+    "json_file_processing": "Обработка JSON файла: {file_name}",  # Ключ: обработка конкретного JSON файла
+    "json_files_processed": "Обработано JSON файлов: {count}",  # Ключ: количество обработанных JSON файлов
+    "json_no_files_found": "JSON файлы для обработки не найдены"  # Ключ: JSON файлы не найдены
 }
 
 # =============================================================================
@@ -1093,26 +1117,26 @@ def convert_json_to_excel(input_json_path, output_excel_path):
         bool: True если конвертация успешна, False в противном случае
     """
     try:
-        logger.info(f"Начинаем конвертацию: {input_json_path} -> {output_excel_path}")
+        logger.info(LOG_MESSAGES['json_conversion_start'].format(input=input_json_path, output=output_excel_path))
         
         # Проверка существования входного файла
         if not os.path.exists(input_json_path):
-            logger.error(f"Входной файл не найден: {input_json_path}")
+            logger.error(LOG_MESSAGES['json_file_not_found'].format(file_path=input_json_path))
             return False
         
         # Создание директории для выходного файла если не существует
         output_dir = os.path.dirname(output_excel_path)
         if output_dir and not os.path.exists(output_dir):
             os.makedirs(output_dir)
-            logger.info(f"Создана директория: {output_dir}")
+            logger.info(LOG_MESSAGES['json_directory_created'].format(directory=output_dir))
         
         # Загрузка JSON данных
-        logger.info("Загружаем JSON данные...")
+        logger.info(LOG_MESSAGES['json_data_loading'])
         with open(input_json_path, 'r', encoding='utf-8') as f:
             json_data = json.load(f)
         
         # Обработка данных
-        logger.info("Обрабатываем данные...")
+        logger.info(LOG_MESSAGES['json_data_processing'])
         leaders_data = []
         
         if isinstance(json_data, dict):
@@ -1127,18 +1151,18 @@ def convert_json_to_excel(input_json_path, output_excel_path):
                             tournament = body['tournament']
                             if 'leaders' in tournament:
                                 leaders_data = tournament['leaders']
-                                logger.info(f"Найдены данные лидеров в ключе: {key}, количество: {len(leaders_data)}")
+                                logger.info(LOG_MESSAGES['json_leaders_found'].format(key=key, count=len(leaders_data)))
                                 break
         elif isinstance(json_data, list):
             # Прямой список лидеров
             leaders_data = json_data
-            logger.info(f"Прямой список лидеров, количество: {len(leaders_data)}")
+            logger.info(LOG_MESSAGES['json_direct_leaders'].format(count=len(leaders_data)))
         else:
-            logger.error("Неверный формат JSON данных")
+            logger.error(LOG_MESSAGES['json_invalid_format'])
             return False
         
         if not leaders_data:
-            logger.error("Не найдены данные лидеров в JSON файле")
+            logger.error(LOG_MESSAGES['json_no_leaders'])
             return False
         
         # Преобразование данных в плоскую структуру
@@ -1154,10 +1178,10 @@ def convert_json_to_excel(input_json_path, output_excel_path):
             logger.warning("Нет данных для обработки")
             return False
         
-        logger.info(f"Обработано {len(df)} записей")
+        logger.info(LOG_MESSAGES['json_records_processed'].format(count=len(df)))
         
         # Создание Excel файла
-        logger.info("Создаем Excel файл...")
+        logger.info(LOG_MESSAGES['json_excel_creation'])
         with pd.ExcelWriter(output_excel_path, engine='openpyxl') as writer:
             # Основной лист с данными
             df.to_excel(writer, sheet_name='DATA', index=False)
@@ -1175,59 +1199,41 @@ def convert_json_to_excel(input_json_path, output_excel_path):
             if JSON_PROCESSING_CONFIG["create_statistics"]:
                 create_statistics_sheet(workbook, df)
         
-        logger.info(f"Excel файл успешно создан: {output_excel_path}")
+        logger.info(LOG_MESSAGES['json_excel_success'].format(file_path=output_excel_path))
         return True
         
     except Exception as e:
-        logger.error(f"Ошибка при конвертации: {str(e)}")
+        logger.error(LOG_MESSAGES['json_conversion_error'].format(error=str(e)))
         return False
 
 @measure_time
-def process_json_files_in_input():
+def convert_specific_json_file(file_name_without_extension):
     """
-    Обрабатывает все JSON файлы в INPUT директории согласно настройкам
+    Конвертирует конкретный JSON файл в Excel
     
-    Ищет JSON файлы с данными LeadersForAdmin и конвертирует их в Excel
+    Args:
+        file_name_without_extension (str): Имя файла без расширения
+        
+    Returns:
+        bool: True если конвертация успешна, False в противном случае
     """
     try:
-        logger.info("Поиск JSON файлов в INPUT директории")
+        # Формируем пути к файлам
+        input_json_path = os.path.join(JSON_PROCESSING_CONFIG["input_directory"], f"{file_name_without_extension}.json")
+        output_excel_path = os.path.join(JSON_PROCESSING_CONFIG["output_directory"], f"{file_name_without_extension}.xlsx")
         
-        # Проверяем существование INPUT директории
-        if not os.path.exists(INPUT_DIR):
-            logger.error(f"INPUT директория не найдена: {INPUT_DIR}")
-            return []
+        logger.info(LOG_MESSAGES['json_file_processing'].format(file_name=file_name_without_extension))
         
-        # Ищем JSON файлы
-        json_files = []
-        for file in os.listdir(INPUT_DIR):
-            if file.endswith('.json') and 'leadersForAdmin' in file:
-                json_files.append(os.path.join(INPUT_DIR, file))
-        
-        if not json_files:
-            logger.info("JSON файлы с данными LeadersForAdmin не найдены")
-            return []
-        
-        logger.info(f"Найдено JSON файлов: {len(json_files)}")
-        
-        # Обрабатываем каждый файл
-        processed_files = []
-        for json_file in json_files:
-            logger.info(f"Обработка файла: {os.path.basename(json_file)}")
+        # Конвертируем файл
+        if convert_json_to_excel(input_json_path, output_excel_path):
+            logger.info(LOG_MESSAGES['json_excel_success'].format(file_path=output_excel_path))
+            return True
+        else:
+            return False
             
-            # Создаем имя выходного файла
-            base_name = os.path.splitext(os.path.basename(json_file))[0]
-            output_file = os.path.join(OUTPUT_DIR, f"{base_name}.xlsx")
-            
-            # Конвертируем файл
-            if convert_json_to_excel(json_file, output_file):
-                processed_files.append(output_file)
-        
-        logger.info(f"Обработано файлов: {len(processed_files)}")
-        return processed_files
-        
     except Exception as e:
-        logger.error(f"Ошибка при обработке JSON файлов: {e}")
-        return []
+        logger.error(LOG_MESSAGES['json_conversion_error'].format(error=str(e)))
+        return False
 
 # =============================================================================
 # ФУНКЦИИ ВЫВОДА СТАТИСТИКИ
@@ -1367,15 +1373,21 @@ def main():
         # Операция: Обработка JSON файлов в Excel
         if "process_json" in ACTIVE_OPERATIONS:
             logger.info("=== ВЫПОЛНЕНИЕ ОПЕРАЦИИ: ОБРАБОТКА JSON В EXCEL ===")
-            logger.info("Начинаем обработку JSON файлов в Excel...")
-            processed_excel_files = process_json_files_in_input()
             
-            if processed_excel_files:
-                logger.info(f"Обработано Excel файлов: {len(processed_excel_files)}")
-                for excel_file in processed_excel_files:
-                    logger.info(f"Создан Excel файл: {excel_file}")
+            if JSON_FILES_TO_PROCESS:
+                logger.info(f"JSON файлы для обработки: {', '.join(JSON_FILES_TO_PROCESS)}")
+                processed_count = 0
+                
+                for file_name in JSON_FILES_TO_PROCESS:
+                    if convert_specific_json_file(file_name):
+                        processed_count += 1
+                
+                if processed_count > 0:
+                    logger.info(LOG_MESSAGES['json_files_processed'].format(count=processed_count))
+                else:
+                    logger.info(LOG_MESSAGES['json_no_files_found'])
             else:
-                logger.info("JSON файлы для обработки не найдены")
+                logger.info(LOG_MESSAGES['json_no_files_found'])
         else:
             logger.info("Обработка JSON файлов отключена (не включена в ACTIVE_OPERATIONS)")
             
