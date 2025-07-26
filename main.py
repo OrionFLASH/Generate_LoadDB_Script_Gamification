@@ -203,167 +203,167 @@ LOG_MESSAGES = {
 # Содержит параметры для генерации JavaScript и обработки данных
 # Каждая конфигурация включает: домен, API пути, параметры запросов, настройки файлов
 FUNCTION_CONFIGS = {
-    "leaders_for_admin": {
-        "name": "LeadersForAdmin",
-        "description": "Информация по загруженным в турнир данным об участниках",
-        "variants": {
-            "sigma": {
-                "name": "LeadersForAdmin (SIGMA)",
-                "description": "Информация по загруженным в турнир данным об участниках - SIGMA",
-                "domain": "https://salesheroes.sberbank.ru",
-                "params": {
-                    "api_path": "/bo/rmkib.gamification/api/v1/tournaments/",
-                    "service": "leadersForAdmin",
-                    "page_param": "pageNum=1"
+    "leaders_for_admin": {  # Ключ: конфигурация для скрипта LeadersForAdmin (информация по участникам турнира)
+        "name": "LeadersForAdmin",  # Ключ: название скрипта для отображения
+        "description": "Информация по загруженным в турнир данным об участниках",  # Ключ: описание назначения скрипта
+        "variants": {  # Ключ: варианты конфигурации (SIGMA/ALPHA)
+            "sigma": {  # Ключ: вариант SIGMA (продакшн окружение)
+                "name": "LeadersForAdmin (SIGMA)",  # Ключ: название варианта
+                "description": "Информация по загруженным в турнир данным об участниках - SIGMA",  # Ключ: описание варианта
+                "domain": "https://salesheroes.sberbank.ru",  # Ключ: домен для SIGMA
+                "params": {  # Ключ: параметры API запросов
+                    "api_path": "/bo/rmkib.gamification/api/v1/tournaments/",  # Ключ: путь к API
+                    "service": "leadersForAdmin",  # Ключ: название сервиса
+                    "page_param": "pageNum=1"  # Ключ: параметр пагинации
                 }
             },
-            "alpha": {
-                "name": "LeadersForAdmin (ALPHA)",
-                "description": "Информация по загруженным в турнир данным об участниках - ALPHA",
-                "domain": "https://efs-our-business-prom.omega.sbrf.ru",
-                "params": {
-                    "api_path": "/bo/rmkib.gamification/api/v1/tournaments/",
-                    "service": "leadersForAdmin",
-                    "page_param": "pageNum=1"
+            "alpha": {  # Ключ: вариант ALPHA (тестовое окружение)
+                "name": "LeadersForAdmin (ALPHA)",  # Ключ: название варианта
+                "description": "Информация по загруженным в турнир данным об участниках - ALPHA",  # Ключ: описание варианта
+                "domain": "https://efs-our-business-prom.omega.sbrf.ru",  # Ключ: домен для ALPHA
+                "params": {  # Ключ: параметры API запросов
+                    "api_path": "/bo/rmkib.gamification/api/v1/tournaments/",  # Ключ: путь к API
+                    "service": "leadersForAdmin",  # Ключ: название сервиса
+                    "page_param": "pageNum=1"  # Ключ: параметр пагинации
                 }
             }
         },
-        "selected_variant": "sigma",  # "sigma" или "alpha"
-        "data_source": "external_file",
-        "input_format": "CSV",
-        "csv_column": "TOURNAMENT_CODE",
-        "csv_delimiter": ";",
-        "csv_encoding": "utf-8",
-        "input_file": "TOURNAMENT-SCHEDULE (PROM) 2025-07-25 v6"
+        "selected_variant": "sigma",  # Ключ: выбранный вариант (sigma/alpha)
+        "data_source": "external_file",  # Ключ: источник данных (file/variable/external_file)
+        "input_format": "CSV",  # Ключ: формат входного файла
+        "csv_column": "TOURNAMENT_CODE",  # Ключ: название столбца для извлечения данных
+        "csv_delimiter": ";",  # Ключ: разделитель в CSV файле
+        "csv_encoding": "utf-8",  # Ключ: кодировка CSV файла
+        "input_file": "TOURNAMENT-SCHEDULE (PROM) 2025-07-25 v6"  # Ключ: имя входного файла (без расширения)
     },
-    "reward": {
-        "name": "REWARD",
-        "description": "Информация о сотрудниках которые уже получили награды",
-        "domain": "rewards.example.com",
-        "params": {
-            "api_endpoint": "/api/rewards/list",
-            "include_details": True,
-            "status": "received",
-            "date_from": "2024-01-01"
+    "reward": {  # Ключ: конфигурация для скрипта REWARD (информация о наградах сотрудников)
+        "name": "REWARD",  # Ключ: название скрипта для отображения
+        "description": "Информация о сотрудниках которые уже получили награды",  # Ключ: описание назначения скрипта
+        "domain": "rewards.example.com",  # Ключ: домен для API запросов
+        "params": {  # Ключ: параметры API запросов
+            "api_endpoint": "/api/rewards/list",  # Ключ: конечная точка API
+            "include_details": True,  # Ключ: включать ли детали
+            "status": "received",  # Ключ: статус наград
+            "date_from": "2024-01-01"  # Ключ: дата начала периода
         },
-        "data_source": "file",
-        "input_format": "CSV",
-        "csv_column": "employee_id",
-        "csv_delimiter": ";",
-        "csv_encoding": "utf-8"
+        "data_source": "file",  # Ключ: источник данных
+        "input_format": "CSV",  # Ключ: формат входного файла
+        "csv_column": "employee_id",  # Ключ: название столбца для извлечения данных
+        "csv_delimiter": ";",  # Ключ: разделитель в CSV файле
+        "csv_encoding": "utf-8"  # Ключ: кодировка CSV файла
     },
-    "profile": {
-        "name": "PROFILE",
-        "description": "Профили сотрудников в героях продаж",
-        "domain": "profiles.example.com",
-        "params": {
-            "api_endpoint": "/api/profiles/employee",
-            "include_stats": True,
-            "include_achievements": True,
-            "format": "detailed"
+    "profile": {  # Ключ: конфигурация для скрипта PROFILE (профили сотрудников)
+        "name": "PROFILE",  # Ключ: название скрипта для отображения
+        "description": "Профили сотрудников в героях продаж",  # Ключ: описание назначения скрипта
+        "domain": "profiles.example.com",  # Ключ: домен для API запросов
+        "params": {  # Ключ: параметры API запросов
+            "api_endpoint": "/api/profiles/employee",  # Ключ: конечная точка API
+            "include_stats": True,  # Ключ: включать ли статистику
+            "include_achievements": True,  # Ключ: включать ли достижения
+            "format": "detailed"  # Ключ: формат ответа
         },
-        "data_source": "file",
-        "input_format": "TXT",
-        "csv_column": "profile_id",
-        "csv_delimiter": ";",
-        "csv_encoding": "utf-8"
+        "data_source": "file",  # Ключ: источник данных
+        "input_format": "TXT",  # Ключ: формат входного файла
+        "csv_column": "profile_id",  # Ключ: название столбца для извлечения данных
+        "csv_delimiter": ";",  # Ключ: разделитель в CSV файле
+        "csv_encoding": "utf-8"  # Ключ: кодировка CSV файла
     },
-    "news_details": {
-        "name": "NewsDetails",
-        "description": "Детальная карточка новости",
-        "domain": "news.example.com",
-        "params": {
-            "api_endpoint": "/api/news/details",
-            "include_content": True,
-            "include_attachments": True,
-            "format": "full"
+    "news_details": {  # Ключ: конфигурация для скрипта NewsDetails (детальная карточка новости)
+        "name": "NewsDetails",  # Ключ: название скрипта для отображения
+        "description": "Детальная карточка новости",  # Ключ: описание назначения скрипта
+        "domain": "news.example.com",  # Ключ: домен для API запросов
+        "params": {  # Ключ: параметры API запросов
+            "api_endpoint": "/api/news/details",  # Ключ: конечная точка API
+            "include_content": True,  # Ключ: включать ли содержимое
+            "include_attachments": True,  # Ключ: включать ли вложения
+            "format": "full"  # Ключ: формат ответа
         },
-        "data_source": "file",
-        "input_format": "TXT",
-        "csv_column": "news_id",
-        "csv_delimiter": ";",
-        "csv_encoding": "utf-8"
+        "data_source": "file",  # Ключ: источник данных
+        "input_format": "TXT",  # Ключ: формат входного файла
+        "csv_column": "news_id",  # Ключ: название столбца для извлечения данных
+        "csv_delimiter": ";",  # Ключ: разделитель в CSV файле
+        "csv_encoding": "utf-8"  # Ключ: кодировка CSV файла
     },
-    "address_book_tn": {
-        "name": "AdressBookTN",
-        "description": "Карточка сотрудника из адресной книги по табельным номерам",
-        "domain": "directory.example.com",
-        "params": {
-            "api_endpoint": "/api/directory/employee",
-            "search_by": "employee_number",
-            "include_contacts": True,
-            "include_department": True
+    "address_book_tn": {  # Ключ: конфигурация для скрипта AdressBookTN (карточка сотрудника по табельному номеру)
+        "name": "AdressBookTN",  # Ключ: название скрипта для отображения
+        "description": "Карточка сотрудника из адресной книги по табельным номерам",  # Ключ: описание назначения скрипта
+        "domain": "directory.example.com",  # Ключ: домен для API запросов
+        "params": {  # Ключ: параметры API запросов
+            "api_endpoint": "/api/directory/employee",  # Ключ: конечная точка API
+            "search_by": "employee_number",  # Ключ: поле для поиска
+            "include_contacts": True,  # Ключ: включать ли контакты
+            "include_department": True  # Ключ: включать ли отдел
         },
-        "data_source": "file",
-        "input_format": "CSV",
-        "csv_column": "employee_number",
-        "csv_delimiter": ";",
-        "csv_encoding": "utf-8"
+        "data_source": "file",  # Ключ: источник данных
+        "input_format": "CSV",  # Ключ: формат входного файла
+        "csv_column": "employee_number",  # Ключ: название столбца для извлечения данных
+        "csv_delimiter": ";",  # Ключ: разделитель в CSV файле
+        "csv_encoding": "utf-8"  # Ключ: кодировка CSV файла
     },
-    "address_book_dev": {
-        "name": "AdressBookDev",
-        "description": "Карточка подразделения из адресной книги со списком сотрудников",
-        "domain": "directory.example.com",
-        "params": {
-            "api_endpoint": "/api/directory/department",
-            "include_employees": True,
-            "include_hierarchy": True,
-            "format": "detailed"
+    "address_book_dev": {  # Ключ: конфигурация для скрипта AdressBookDev (карточка подразделения)
+        "name": "AdressBookDev",  # Ключ: название скрипта для отображения
+        "description": "Карточка подразделения из адресной книги со списком сотрудников",  # Ключ: описание назначения скрипта
+        "domain": "directory.example.com",  # Ключ: домен для API запросов
+        "params": {  # Ключ: параметры API запросов
+            "api_endpoint": "/api/directory/department",  # Ключ: конечная точка API
+            "include_employees": True,  # Ключ: включать ли сотрудников
+            "include_hierarchy": True,  # Ключ: включать ли иерархию
+            "format": "detailed"  # Ключ: формат ответа
         },
-        "data_source": "file",
-        "input_format": "CSV",
-        "csv_column": "department_id",
-        "csv_delimiter": ";",
-        "csv_encoding": "utf-8"
+        "data_source": "file",  # Ключ: источник данных
+        "input_format": "CSV",  # Ключ: формат входного файла
+        "csv_column": "department_id",  # Ключ: название столбца для извлечения данных
+        "csv_delimiter": ";",  # Ключ: разделитель в CSV файле
+        "csv_encoding": "utf-8"  # Ключ: кодировка CSV файла
     },
-    "orders": {
-        "name": "Orders",
-        "description": "Список сотрудников выбравших преференции",
-        "domain": "orders.example.com",
-        "params": {
-            "api_endpoint": "/api/orders/preferences",
-            "status": "selected",
-            "include_details": True,
-            "date_from": "2024-01-01"
+    "orders": {  # Ключ: конфигурация для скрипта Orders (список сотрудников с преференциями)
+        "name": "Orders",  # Ключ: название скрипта для отображения
+        "description": "Список сотрудников выбравших преференции",  # Ключ: описание назначения скрипта
+        "domain": "orders.example.com",  # Ключ: домен для API запросов
+        "params": {  # Ключ: параметры API запросов
+            "api_endpoint": "/api/orders/preferences",  # Ключ: конечная точка API
+            "status": "selected",  # Ключ: статус заказов
+            "include_details": True,  # Ключ: включать ли детали
+            "date_from": "2024-01-01"  # Ключ: дата начала периода
         },
-        "data_source": "file",
-        "input_format": "CSV",
-        "csv_column": "employee_id",
-        "csv_delimiter": ";",
-        "csv_encoding": "utf-8"
+        "data_source": "file",  # Ключ: источник данных
+        "input_format": "CSV",  # Ключ: формат входного файла
+        "csv_column": "employee_id",  # Ключ: название столбца для извлечения данных
+        "csv_delimiter": ";",  # Ключ: разделитель в CSV файле
+        "csv_encoding": "utf-8"  # Ключ: кодировка CSV файла
     },
-    "news_list": {
-        "name": "NewsList",
-        "description": "Список новостей",
-        "domain": "news.example.com",
-        "params": {
-            "api_endpoint": "/api/news/list",
-            "status": "published",
-            "include_preview": True,
-            "limit": 100
+    "news_list": {  # Ключ: конфигурация для скрипта NewsList (список новостей)
+        "name": "NewsList",  # Ключ: название скрипта для отображения
+        "description": "Список новостей",  # Ключ: описание назначения скрипта
+        "domain": "news.example.com",  # Ключ: домен для API запросов
+        "params": {  # Ключ: параметры API запросов
+            "api_endpoint": "/api/news/list",  # Ключ: конечная точка API
+            "status": "published",  # Ключ: статус новостей
+            "include_preview": True,  # Ключ: включать ли превью
+            "limit": 100  # Ключ: лимит записей
         },
-        "data_source": "variable",  # Использует тестовые данные
-        "input_format": "TXT",
-        "csv_column": "news_category",
-        "csv_delimiter": ";",
-        "csv_encoding": "utf-8"
+        "data_source": "variable",  # Ключ: источник данных (использует тестовые данные)
+        "input_format": "TXT",  # Ключ: формат входного файла
+        "csv_column": "news_category",  # Ключ: название столбца для извлечения данных
+        "csv_delimiter": ";",  # Ключ: разделитель в CSV файле
+        "csv_encoding": "utf-8"  # Ключ: кодировка CSV файла
     },
-    "rating_list": {
-        "name": "RaitingList",
-        "description": "Рейтинг участников по полученным наградам и кристаллам",
-        "domain": "rating.example.com",
-        "params": {
-            "api_endpoint": "/api/rating/participants",
-            "sort_by": "total_points",
-            "include_rewards": True,
-            "include_crystals": True,
-            "limit": 500
+    "rating_list": {  # Ключ: конфигурация для скрипта RaitingList (рейтинг участников)
+        "name": "RaitingList",  # Ключ: название скрипта для отображения
+        "description": "Рейтинг участников по полученным наградам и кристаллам",  # Ключ: описание назначения скрипта
+        "domain": "rating.example.com",  # Ключ: домен для API запросов
+        "params": {  # Ключ: параметры API запросов
+            "api_endpoint": "/api/rating/participants",  # Ключ: конечная точка API
+            "sort_by": "total_points",  # Ключ: поле для сортировки
+            "include_rewards": True,  # Ключ: включать ли награды
+            "include_crystals": True,  # Ключ: включать ли кристаллы
+            "limit": 500  # Ключ: лимит записей
         },
-        "data_source": "file",
-        "input_format": "CSV",
-        "csv_column": "participant_id",
-        "csv_delimiter": ";",
-        "csv_encoding": "utf-8"
+        "data_source": "file",  # Ключ: источник данных
+        "input_format": "CSV",  # Ключ: формат входного файла
+        "csv_column": "participant_id",  # Ключ: название столбца для извлечения данных
+        "csv_delimiter": ";",  # Ключ: разделитель в CSV файле
+        "csv_encoding": "utf-8"  # Ключ: кодировка CSV файла
     }
 }
 
