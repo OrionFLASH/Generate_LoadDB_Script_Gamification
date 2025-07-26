@@ -1,0 +1,110 @@
+# Включить только основные файлы программы и настройки
+# Исключить все остальное
+
+# Включить (НЕ игнорировать) эти файлы:
+# main.py
+# README.md
+# requirements.txt
+# environment.yml
+# setup_environment.sh
+# json_to_excel_base.py
+# json_parser_*.py
+# json_parsers_runner.py
+
+# Игнорировать все файлы и папки по умолчанию
+*
+
+# НЕ игнорировать основные файлы программы
+!main.py
+!README.md
+!requirements.txt
+!environment.yml
+!setup_environment.sh
+
+# НЕ игнорировать JSON парсеры
+!json_to_excel_base.py
+!json_parser_*.py
+!json_parsers_runner.py
+
+# НЕ игнорировать .gitignore
+!.gitignore
+
+# Игнорировать временные и системные файлы
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Игнорировать IDE и редакторы
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Игнорировать лог файлы
+*.log
+
+# Игнорировать созданные данные
+/LOGS/
+/INPUT/
+/OUTPUT/
+conda_packages.txt
+
+# Игнорировать системные файлы macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# Игнорировать системные файлы Windows
+Thumbs.db
+ehthumbs.db
+Desktop.ini
+
+# Игнорировать временные файлы
+*.tmp
+*.temp
+*.bak
+*.backup
+
+# Игнорировать Excel и Office файлы
+*.xlsx
+*.xls
+*.docx
+*.doc
+*.pptx
+*.ppt
+
+# Игнорировать JSON данные
+*.json
+
+# Игнорировать текстовые файлы с данными  
+*.txt
+!requirements.txt
+
+# Игнорировать CSV файлы
+*.csv
+
+# Игнорировать архивы
+*.zip
+*.rar
+*.7z
+*.tar
+*.gz 

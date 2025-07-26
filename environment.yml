@@ -1,0 +1,11 @@
+name: game_script_env
+channels:
+  - defaults
+dependencies:
+  - python=3.9
+  - pip
+  - pandas=1.5.3
+  - numpy=1.24.3
+  - openpyxl=3.1.2
+  - pip:
+    - pyperclip==1.8.2 
