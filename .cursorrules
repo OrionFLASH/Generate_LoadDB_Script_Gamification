@@ -1,0 +1,11 @@
+# Cursor настройки для Python проекта
+# Python интерпретатор: локальное окружение
+python.defaultInterpreterPath: "./local_env/bin/python"
+
+# Активация окружения в терминале
+python.terminal.activateEnvironment: true
+
+# Автоматическое определение типа файла
+files.associations: {
+    "*.py": "python"
+} 

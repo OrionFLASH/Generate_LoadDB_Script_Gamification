@@ -1,0 +1,4 @@
+{
+    "python.defaultInterpreterPath": "./local_env/bin/python",
+    "python.terminal.activateEnvironment": true
+} 

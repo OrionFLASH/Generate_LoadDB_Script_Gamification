@@ -56,7 +56,7 @@ wheels/
 MANIFEST
 
 # Игнорировать IDE и редакторы
-.vscode/
+# .vscode/
 .idea/
 *.swp
 *.swo
