@@ -41,8 +41,15 @@ OUTPUT_DIR = r"/Users/orionflash/Desktop/MyProject/Gen_Load_Game_Script/OUTPUT" 
 # Настройки обработки данных
 DATA_SOURCE = "external_file"  # "file" - из файла, "variable" - из переменной, "external_file" - из внешнего файла
 INPUT_FORMAT = "CSV"  # "TXT" - текстовый файл, "CSV" - CSV файл
-INPUT_FILENAME = "input_data.txt"  # Имя входного файла
+INPUT_FILENAME = "input_data"  # Имя входного файла (без расширения)
 INPUT_FILE_EXTENSION = ".txt"  # Расширение входного файла
+
+# Расширения файлов для различных форматов
+FILE_EXTENSIONS = {
+    "CSV": ".csv",
+    "TXT": ".txt",
+    "JSON": ".json"
+}
 
 # =============================================================================
 # НАСТРОЙКИ ОПЕРАЦИЙ
@@ -214,7 +221,7 @@ FUNCTION_CONFIGS = {
         "csv_column": "TOURNAMENT_CODE",
         "csv_delimiter": ";",
         "csv_encoding": "utf-8",
-        "input_file": "TOURNAMENT-SCHEDULE (PROM) 2025-07-25 v6.csv"
+        "input_file": "TOURNAMENT-SCHEDULE (PROM) 2025-07-25 v6"
     },
     "reward": {
         "name": "REWARD",
@@ -562,12 +569,14 @@ def get_data():
     """
     if DATA_SOURCE == "file":
         # Загрузка данных из файла
-        filepath = os.path.join(INPUT_DIR, INPUT_FILENAME)
+        file_extension = FILE_EXTENSIONS.get(INPUT_FORMAT, INPUT_FILE_EXTENSION)
+        filepath = os.path.join(INPUT_DIR, INPUT_FILENAME + file_extension)
         return load_data_from_file(filepath, INPUT_FORMAT)
     elif DATA_SOURCE == "external_file":
         # Загрузка данных из внешнего файла (для LeadersForAdmin)
         config = FUNCTION_CONFIGS["leaders_for_admin"]
-        filepath = os.path.join(INPUT_DIR, config["input_file"])
+        file_extension = FILE_EXTENSIONS.get(config["input_format"], ".csv")
+        filepath = os.path.join(INPUT_DIR, config["input_file"] + file_extension)
         return load_data_from_file(
             filepath, 
             config["input_format"],
@@ -785,7 +794,8 @@ def generate_script_universal(config_key, data_list=None):
     if data_list is None:
         if config["data_source"] == "file":
             # Загрузка данных из файла
-            filename = f"{config_key}_data.{config['input_format'].lower()}"
+            file_extension = FILE_EXTENSIONS.get(config["input_format"], ".txt")
+            filename = f"{config_key}_data{file_extension}"
             filepath = os.path.join(INPUT_DIR, filename)
             data_list = load_data_from_file(
                 filepath, 
