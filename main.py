@@ -180,6 +180,8 @@ LOG_MESSAGES = {
     # Сообщения о генерации скриптов
     "script_generation": "Генерация скрипта: {script_name}",  # Ключ: начало генерации скрипта
     "script_generated": "Скрипт {script_name} сгенерирован успешно (данных: {count})",  # Ключ: успешная генерация скрипта
+    "script_saved": "Скрипт сохранен в файл: {file_path}",  # Ключ: скрипт сохранен в файл
+    "script_save_error": "Ошибка сохранения скрипта: {error}",  # Ключ: ошибка сохранения скрипта
     
     # Сообщения для итоговой статистики
     "summary_stats": "ИТОГОВАЯ СТАТИСТИКА РАБОТЫ ПРОГРАММЫ",  # Ключ: заголовок статистики
@@ -254,7 +256,7 @@ FUNCTION_CONFIGS = {
         "csv_delimiter": ";",  # Ключ: разделитель в CSV файле
         "csv_encoding": "utf-8",  # Ключ: кодировка CSV файла
         "input_file": "TOURNAMENT-SCHEDULE (PROM) 2025-07-25 v6",  # Ключ: имя входного файла (без расширения)
-        "json_file": "leadersForAdmin"  # Ключ: имя JSON файла для обработки (без расширения)
+        "json_file": "leadersForAdmin_SIGMA_20250726-192035"  # Ключ: имя JSON файла для обработки (без расширения)
     },
     "reward": {  # Ключ: конфигурация для скрипта REWARD (информация о наградах сотрудников)
         "name": "REWARD",  # Ключ: название скрипта для отображения
@@ -632,6 +634,55 @@ def get_data():
         return TEST_DATA_LIST.copy()
 
 @measure_time
+def save_script_to_file(script_content, script_name, config_key=None):
+    """
+    Сохранение сгенерированного скрипта в файл TXT
+    
+    Создает файл с именем на основе названия скрипта и временной метки
+    в директории OUTPUT.
+    
+    Args:
+        script_content (str): Содержимое скрипта для сохранения
+        script_name (str): Название скрипта для формирования имени файла
+        config_key (str, optional): Ключ конфигурации для дополнительной информации
+        
+    Returns:
+        str: Путь к сохраненному файлу или None в случае ошибки
+    """
+    try:
+        # Создание временной метки
+        timestamp = datetime.datetime.now().strftime('%Y%m%d_%H%M%S')
+        
+        # Формирование имени файла
+        # Убираем специальные символы и заменяем пробелы на подчеркивания
+        safe_name = script_name.replace(' ', '_').replace('(', '').replace(')', '').replace('/', '_')
+        
+        # Добавляем информацию о варианте если есть
+        if config_key == "leaders_for_admin":
+            config = FUNCTION_CONFIGS[config_key]
+            selected_variant = config.get("selected_variant", "sigma")
+            filename = f"{safe_name}_{selected_variant.upper()}_{timestamp}.txt"
+        else:
+            filename = f"{safe_name}_{timestamp}.txt"
+        
+        # Полный путь к файлу
+        filepath = os.path.join(OUTPUT_DIR, filename)
+        
+        # Создание директории если не существует
+        os.makedirs(OUTPUT_DIR, exist_ok=True)
+        
+        # Сохранение скрипта в файл
+        with open(filepath, 'w', encoding='utf-8') as f:
+            f.write(script_content)
+        
+        logger.info(LOG_MESSAGES['script_saved'].format(file_path=filepath))
+        return filepath
+        
+    except Exception as e:
+        logger.error(LOG_MESSAGES['script_save_error'].format(error=str(e)))
+        return None
+
+@measure_time
 def copy_to_clipboard(text):
     """
     Копирование текста в буфер обмена
@@ -984,6 +1035,9 @@ console.log('Обработка данных:', {data_list[:3] if len(data_list)
     # Вывод скрипта в консоль
     print(f"=== GENERATED SCRIPT: {config['name']} ===")
     print(script)
+    
+    # Сохранение скрипта в файл
+    saved_filepath = save_script_to_file(script, config['name'], config_key)
     
     # Копирование в буфер обмена
     copy_to_clipboard(script)
