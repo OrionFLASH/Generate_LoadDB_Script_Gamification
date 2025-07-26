@@ -26,50 +26,34 @@ from openpyxl.utils import get_column_letter
 from openpyxl.formatting.rule import ColorScaleRule, CellIsRule
 
 # =============================================================================
-# КОНСТАНТЫ И НАСТРОЙКИ ПРОГРАММЫ
+# ГЛОБАЛЬНЫЕ НАСТРОЙКИ ПРОГРАММЫ
 # =============================================================================
+
+# Базовая папка проекта
+BASE_DIR = r"/Users/orionflash/Desktop/MyProject/Gen_Load_Game_Script"
 
 # Настройки логирования
 LOG_LEVEL = "DEBUG"  # Уровень детализации логов: "INFO" - основная информация, "DEBUG" - подробная отладочная информация
-LOG_DIR = r"/Users/orionflash/Desktop/MyProject/Gen_Load_Game_Script/LOGS"  # Абсолютный путь к директории для сохранения файлов логов
 LOG_FILENAME_BASE = "LOG"  # Базовое имя файла лога (к нему добавляется дата и время)
 
-# Настройки входных и выходных данных
-INPUT_DIR = r"/Users/orionflash/Desktop/MyProject/Gen_Load_Game_Script/INPUT"  # Абсолютный путь к директории с входными файлами (CSV, TXT)
-OUTPUT_DIR = r"/Users/orionflash/Desktop/MyProject/Gen_Load_Game_Script/OUTPUT"  # Абсолютный путь к директории для сохранения сгенерированных файлов
+# Имена подпапок (глобально)
+SUBDIRECTORIES = {
+    "LOGS": "LOGS",           # Папка для логов
+    "INPUT": "INPUT",         # Папка для входных файлов
+    "OUTPUT": "OUTPUT",       # Папка для выходных файлов
+    "SCRIPT": "SCRIPT",       # Папка для сгенерированных скриптов
+    "CONFIG": "CONFIG",       # Папка для конфигурационных файлов
+    "JSON": "JSON"            # Папка для JSON файлов
+}
 
-# Настройки обработки данных
-DATA_SOURCE = "external_file"  # Источник данных: "file" - из основного файла, "variable" - из тестовых данных, "external_file" - из конфигурации функции
-INPUT_FORMAT = "TXT"  # Формат входного файла: "TXT" - текстовый файл, "CSV" - табличный файл с разделителями
-INPUT_FILENAME = "input_data"  # Имя основного входного файла без расширения (расширение добавляется автоматически)
-INPUT_FILE_EXTENSION = ".txt"  # Расширение по умолчанию для основного входного файла (используется как fallback)
-
-# Расширения файлов для различных форматов
-# Словарь для автоматического определения расширения файла на основе его формата
-# Используется для формирования полных путей к файлам
+# Расширения файлов для различных форматов (глобально)
 FILE_EXTENSIONS = {
     "CSV": ".csv",    # Ключ: формат CSV файлов
     "TXT": ".txt",    # Ключ: формат текстовых файлов  
     "JSON": ".json"   # Ключ: формат JSON файлов
 }
 
-# =============================================================================
-# НАСТРОЙКИ ОПЕРАЦИЙ
-# =============================================================================
-
-# Выбор активных операций
-# Список операций, которые будут выполнены при запуске программы
-# Доступные операции:
-# - "generate_scripts" - генерация JavaScript скриптов на основе входных данных
-# - "process_json" - конвертация JSON файлов в Excel с форматированием
-ACTIVE_OPERATIONS = [
-    "generate_scripts",  # Генерация JavaScript скриптов для различных сервисов
-    "process_json"       # Обработка JSON файлов и создание Excel отчетов
-]
-
-# Выбор активных скриптов для генерации
-# Список типов скриптов, которые будут сгенерированы
-# Раскомментируйте нужные скрипты для генерации (уберите # в начале строки)
+# Выбор активных скриптов для генерации (глобально)
 ACTIVE_SCRIPTS = [
     "leaders_for_admin",  # Скрипт для получения информации по участникам турнира (LeadersForAdmin)
     # "reward",             # Скрипт для получения информации о наградах сотрудников
@@ -81,16 +65,6 @@ ACTIVE_SCRIPTS = [
     # "news_list",          # Скрипт для получения списка новостей
     # "rating_list"         # Скрипт для получения рейтинга участников
 ]
-
-# Настройки обработки JSON файлов
-# Конфигурация для конвертации JSON файлов в Excel с дополнительными возможностями
-JSON_PROCESSING_CONFIG = {
-    "input_directory": r"/Users/orionflash/Desktop/MyProject/Gen_Load_Game_Script/INPUT",     # Ключ: директория для поиска JSON файлов (абсолютный путь)
-    "output_directory": r"/Users/orionflash/Desktop/MyProject/Gen_Load_Game_Script/OUTPUT",   # Ключ: директория для сохранения Excel файлов (абсолютный путь)
-    "create_summary": True,         # Ключ: создавать лист SUMMARY с общей сводкой данных
-    "create_statistics": True,      # Ключ: создавать лист STATISTICS с аналитическими данными
-    "apply_styling": True           # Ключ: применять цветовое оформление и форматирование к Excel файлу
-}
 
 
 
@@ -227,6 +201,7 @@ FUNCTION_CONFIGS = {
     "leaders_for_admin": {  # Ключ: конфигурация для скрипта LeadersForAdmin (информация по участникам турнира)
         "name": "LeadersForAdmin",  # Ключ: название скрипта для отображения
         "description": "Информация по загруженным в турнир данным об участниках",  # Ключ: описание назначения скрипта
+        "active_operations": "both",  # Ключ: активные операции ("scripts_only", "json_only", "both")
         "variants": {  # Ключ: варианты конфигурации (SIGMA/ALPHA)
             "sigma": {  # Ключ: вариант SIGMA (продакшн окружение)
                 "name": "LeadersForAdmin (SIGMA)",  # Ключ: название варианта
@@ -261,6 +236,7 @@ FUNCTION_CONFIGS = {
     "reward": {  # Ключ: конфигурация для скрипта REWARD (информация о наградах сотрудников)
         "name": "REWARD",  # Ключ: название скрипта для отображения
         "description": "Информация о сотрудниках которые уже получили награды",  # Ключ: описание назначения скрипта
+        "active_operations": "scripts_only",  # Ключ: активные операции ("scripts_only", "json_only", "both")
         "domain": "rewards.example.com",  # Ключ: домен для API запросов
         "params": {  # Ключ: параметры API запросов
             "api_endpoint": "/api/rewards/list",  # Ключ: конечная точка API
@@ -278,6 +254,7 @@ FUNCTION_CONFIGS = {
     "profile": {  # Ключ: конфигурация для скрипта PROFILE (профили сотрудников)
         "name": "PROFILE",  # Ключ: название скрипта для отображения
         "description": "Профили сотрудников в героях продаж",  # Ключ: описание назначения скрипта
+        "active_operations": "scripts_only",  # Ключ: активные операции ("scripts_only", "json_only", "both")
         "domain": "profiles.example.com",  # Ключ: домен для API запросов
         "params": {  # Ключ: параметры API запросов
             "api_endpoint": "/api/profiles/employee",  # Ключ: конечная точка API
@@ -295,6 +272,7 @@ FUNCTION_CONFIGS = {
     "news_details": {  # Ключ: конфигурация для скрипта NewsDetails (детальная карточка новости)
         "name": "NewsDetails",  # Ключ: название скрипта для отображения
         "description": "Детальная карточка новости",  # Ключ: описание назначения скрипта
+        "active_operations": "scripts_only",  # Ключ: активные операции ("scripts_only", "json_only", "both")
         "domain": "news.example.com",  # Ключ: домен для API запросов
         "params": {  # Ключ: параметры API запросов
             "api_endpoint": "/api/news/details",  # Ключ: конечная точка API
@@ -312,6 +290,7 @@ FUNCTION_CONFIGS = {
     "address_book_tn": {  # Ключ: конфигурация для скрипта AdressBookTN (карточка сотрудника по табельному номеру)
         "name": "AdressBookTN",  # Ключ: название скрипта для отображения
         "description": "Карточка сотрудника из адресной книги по табельным номерам",  # Ключ: описание назначения скрипта
+        "active_operations": "scripts_only",  # Ключ: активные операции ("scripts_only", "json_only", "both")
         "domain": "directory.example.com",  # Ключ: домен для API запросов
         "params": {  # Ключ: параметры API запросов
             "api_endpoint": "/api/directory/employee",  # Ключ: конечная точка API
@@ -329,6 +308,7 @@ FUNCTION_CONFIGS = {
     "address_book_dev": {  # Ключ: конфигурация для скрипта AdressBookDev (карточка подразделения)
         "name": "AdressBookDev",  # Ключ: название скрипта для отображения
         "description": "Карточка подразделения из адресной книги со списком сотрудников",  # Ключ: описание назначения скрипта
+        "active_operations": "scripts_only",  # Ключ: активные операции ("scripts_only", "json_only", "both")
         "domain": "directory.example.com",  # Ключ: домен для API запросов
         "params": {  # Ключ: параметры API запросов
             "api_endpoint": "/api/directory/department",  # Ключ: конечная точка API
@@ -346,6 +326,7 @@ FUNCTION_CONFIGS = {
     "orders": {  # Ключ: конфигурация для скрипта Orders (список сотрудников с преференциями)
         "name": "Orders",  # Ключ: название скрипта для отображения
         "description": "Список сотрудников выбравших преференции",  # Ключ: описание назначения скрипта
+        "active_operations": "scripts_only",  # Ключ: активные операции ("scripts_only", "json_only", "both")
         "domain": "orders.example.com",  # Ключ: домен для API запросов
         "params": {  # Ключ: параметры API запросов
             "api_endpoint": "/api/orders/preferences",  # Ключ: конечная точка API
@@ -363,6 +344,7 @@ FUNCTION_CONFIGS = {
     "news_list": {  # Ключ: конфигурация для скрипта NewsList (список новостей)
         "name": "NewsList",  # Ключ: название скрипта для отображения
         "description": "Список новостей",  # Ключ: описание назначения скрипта
+        "active_operations": "scripts_only",  # Ключ: активные операции ("scripts_only", "json_only", "both")
         "domain": "news.example.com",  # Ключ: домен для API запросов
         "params": {  # Ключ: параметры API запросов
             "api_endpoint": "/api/news/list",  # Ключ: конечная точка API
@@ -380,6 +362,7 @@ FUNCTION_CONFIGS = {
     "rating_list": {  # Ключ: конфигурация для скрипта RaitingList (рейтинг участников)
         "name": "RaitingList",  # Ключ: название скрипта для отображения
         "description": "Рейтинг участников по полученным наградам и кристаллам",  # Ключ: описание назначения скрипта
+        "active_operations": "scripts_only",  # Ключ: активные операции ("scripts_only", "json_only", "both")
         "domain": "rating.example.com",  # Ключ: домен для API запросов
         "params": {  # Ключ: параметры API запросов
             "api_endpoint": "/api/rating/participants",  # Ключ: конечная точка API
@@ -397,13 +380,7 @@ FUNCTION_CONFIGS = {
     }
 }
 
-# Настройки для генерации JavaScript скриптов (глобальные по умолчанию)
-# Используются как fallback значения, если не указаны в конфигурации конкретной функции
-BASE_DOMAIN = "https://salesheroes.sberbank.ru"  # Базовый домен для API запросов (используется по умолчанию)
-REQUEST_PARAMETERS = {  # Дополнительные параметры запросов (заглушка для будущего использования)
-    "param1": "value1",  # Ключ: параметр 1 (пример)
-    "param2": "value2"   # Ключ: параметр 2 (пример)
-}
+
 
 # =============================================================================
 # ГЛОБАЛЬНЫЕ ПЕРЕМЕННЫЕ
@@ -433,15 +410,25 @@ def setup_logging():
     
     # Создание директорий если не существуют
     # Используем exist_ok=True чтобы не вызывать ошибку если директория уже существует
-    os.makedirs(LOG_DIR, exist_ok=True)
-    os.makedirs(INPUT_DIR, exist_ok=True)
-    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    log_dir = os.path.join(BASE_DIR, SUBDIRECTORIES["LOGS"])
+    input_dir = os.path.join(BASE_DIR, SUBDIRECTORIES["INPUT"])
+    output_dir = os.path.join(BASE_DIR, SUBDIRECTORIES["OUTPUT"])
+    script_dir = os.path.join(BASE_DIR, SUBDIRECTORIES["SCRIPT"])
+    config_dir = os.path.join(BASE_DIR, SUBDIRECTORIES["CONFIG"])
+    json_dir = os.path.join(BASE_DIR, SUBDIRECTORIES["JSON"])
+    
+    os.makedirs(log_dir, exist_ok=True)
+    os.makedirs(input_dir, exist_ok=True)
+    os.makedirs(output_dir, exist_ok=True)
+    os.makedirs(script_dir, exist_ok=True)
+    os.makedirs(config_dir, exist_ok=True)
+    os.makedirs(json_dir, exist_ok=True)
     
     # Формирование имени файла лога с временной меткой
-    # Формат: game_script_generator_DEBUG_2024-01-15.log
+    # Формат: LOG_DEBUG_2024-01-15.log
     timestamp = datetime.datetime.now().strftime("%Y-%m-%d")
     log_filename = f"{LOG_FILENAME_BASE}_{LOG_LEVEL}_{timestamp}.log"
-    log_filepath = os.path.join(LOG_DIR, log_filename)
+    log_filepath = os.path.join(log_dir, log_filename)
     
     # Настройка логгера
     logger = logging.getLogger('GameScriptGenerator')
@@ -611,27 +598,10 @@ def get_data():
     Returns:
         list: Список данных для обработки
     """
-    if DATA_SOURCE == "file":
-        # Загрузка данных из файла
-        file_extension = FILE_EXTENSIONS.get(INPUT_FORMAT, INPUT_FILE_EXTENSION)
-        filepath = os.path.join(INPUT_DIR, INPUT_FILENAME + file_extension)
-        return load_data_from_file(filepath, INPUT_FORMAT)
-    elif DATA_SOURCE == "external_file":
-        # Загрузка данных из внешнего файла (для LeadersForAdmin)
-        config = FUNCTION_CONFIGS["leaders_for_admin"]
-        file_extension = FILE_EXTENSIONS.get(config["input_format"], ".csv")
-        filepath = os.path.join(INPUT_DIR, config["input_file"] + file_extension)
-        return load_data_from_file(
-            filepath, 
-            config["input_format"],
-            config["csv_delimiter"],
-            config["csv_encoding"],
-            config["csv_column"]
-        )
-    else:
-        # Использование тестовых данных
-        logger.info(LOG_MESSAGES['using_test_data'].format(count=len(TEST_DATA_LIST)))
-        return TEST_DATA_LIST.copy()
+    # Эта функция теперь используется только для тестовых данных
+    # Для каждого скрипта данные загружаются индивидуально в generate_script_universal
+    logger.info(LOG_MESSAGES['using_test_data'].format(count=len(TEST_DATA_LIST)))
+    return TEST_DATA_LIST.copy()
 
 @measure_time
 def save_script_to_file(script_content, script_name, config_key=None):
@@ -665,11 +635,12 @@ def save_script_to_file(script_content, script_name, config_key=None):
         else:
             filename = f"{safe_name}_{timestamp}.txt"
         
-        # Полный путь к файлу
-        filepath = os.path.join(OUTPUT_DIR, filename)
+        # Полный путь к файлу (используем папку SCRIPT)
+        script_dir = os.path.join(BASE_DIR, SUBDIRECTORIES["SCRIPT"])
+        filepath = os.path.join(script_dir, filename)
         
         # Создание директории если не существует
-        os.makedirs(OUTPUT_DIR, exist_ok=True)
+        os.makedirs(script_dir, exist_ok=True)
         
         # Сохранение скрипта в файл
         with open(filepath, 'w', encoding='utf-8') as f:
@@ -895,7 +866,20 @@ def generate_script_universal(config_key, data_list=None):
             # Загрузка данных из файла
             file_extension = FILE_EXTENSIONS.get(config["input_format"], ".txt")
             filename = f"{config_key}_data{file_extension}"
-            filepath = os.path.join(INPUT_DIR, filename)
+            input_dir = os.path.join(BASE_DIR, SUBDIRECTORIES["INPUT"])
+            filepath = os.path.join(input_dir, filename)
+            data_list = load_data_from_file(
+                filepath, 
+                config["input_format"],
+                config["csv_delimiter"],
+                config["csv_encoding"],
+                config["csv_column"]
+            )
+        elif config["data_source"] == "external_file":
+            # Загрузка данных из внешнего файла (например, для LeadersForAdmin)
+            file_extension = FILE_EXTENSIONS.get(config["input_format"], ".csv")
+            input_dir = os.path.join(BASE_DIR, SUBDIRECTORIES["INPUT"])
+            filepath = os.path.join(input_dir, config["input_file"] + file_extension)
             data_list = load_data_from_file(
                 filepath, 
                 config["input_format"],
@@ -1300,9 +1284,11 @@ def convert_specific_json_file(file_name_without_extension):
         bool: True если конвертация успешна, False в противном случае
     """
     try:
-        # Формируем пути к файлам
-        input_json_path = os.path.join(JSON_PROCESSING_CONFIG["input_directory"], f"{file_name_without_extension}.json")
-        output_excel_path = os.path.join(JSON_PROCESSING_CONFIG["output_directory"], f"{file_name_without_extension}.xlsx")
+        # Формируем пути к файлам используя новую структуру
+        input_dir = os.path.join(BASE_DIR, SUBDIRECTORIES["INPUT"])
+        output_dir = os.path.join(BASE_DIR, SUBDIRECTORIES["OUTPUT"])
+        input_json_path = os.path.join(input_dir, f"{file_name_without_extension}.json")
+        output_excel_path = os.path.join(output_dir, f"{file_name_without_extension}.xlsx")
         
         logger.info(LOG_MESSAGES['json_file_processing'].format(file_name=file_name_without_extension))
         
@@ -1400,86 +1386,54 @@ def main():
     logger.info("=" * 70)
     
     try:
-        # Выполнение операций согласно настройкам ACTIVE_OPERATIONS
-        logger.info(f"Активные операции: {', '.join(ACTIVE_OPERATIONS)}")
-        
-        # Операция: Генерация скриптов
-        if "generate_scripts" in ACTIVE_OPERATIONS:
-            logger.info("=== ВЫПОЛНЕНИЕ ОПЕРАЦИИ: ГЕНЕРАЦИЯ СКРИПТОВ ===")
+        # Выполнение операций для каждого активного скрипта
+        if ACTIVE_SCRIPTS:
+            logger.info(f"Активные скрипты: {', '.join(ACTIVE_SCRIPTS)}")
             
-            # Получение данных (для генерации скриптов)
-            data_list = get_data()
-            logger.info(LOG_MESSAGES['data_received'].format(count=len(data_list)))
-            
-            # Генерация скриптов согласно настройкам ACTIVE_SCRIPTS
-            if ACTIVE_SCRIPTS:
-                logger.info(f"Активные скрипты для генерации: {', '.join(ACTIVE_SCRIPTS)}")
-                for script_name in ACTIVE_SCRIPTS:
-                    if script_name == "leaders_for_admin":
-                        logger.info(LOG_MESSAGES['selected_script'].format(script_name=script_name))
-                        generate_leaders_for_admin_script(data_list)
-                    elif script_name == "reward":
-                        logger.info(LOG_MESSAGES['selected_script'].format(script_name=script_name))
-                        generate_reward_script(data_list)
-                    elif script_name == "profile":
-                        logger.info(LOG_MESSAGES['selected_script'].format(script_name=script_name))
-                        generate_profile_script(data_list)
-                    elif script_name == "news_details":
-                        logger.info(LOG_MESSAGES['selected_script'].format(script_name=script_name))
-                        generate_news_details_script(data_list)
-                    elif script_name == "address_book_tn":
-                        logger.info(LOG_MESSAGES['selected_script'].format(script_name=script_name))
-                        generate_address_book_tn_script(data_list)
-                    elif script_name == "address_book_dev":
-                        logger.info(LOG_MESSAGES['selected_script'].format(script_name=script_name))
-                        generate_address_book_dev_script(data_list)
-                    elif script_name == "orders":
-                        logger.info(LOG_MESSAGES['selected_script'].format(script_name=script_name))
-                        generate_orders_script(data_list)
-                    elif script_name == "news_list":
-                        logger.info(LOG_MESSAGES['selected_script'].format(script_name=script_name))
-                        generate_news_list_script(data_list)
-                    elif script_name == "rating_list":
-                        logger.info(LOG_MESSAGES['selected_script'].format(script_name=script_name))
-                        generate_rating_list_script(data_list)
-                    elif script_name in FUNCTION_CONFIGS:
-                        logger.info(LOG_MESSAGES['selected_script'].format(script_name=script_name))
-                        generate_script_universal(script_name, data_list)
-                    else:
-                        logger.error(f"Неизвестный скрипт: {script_name}")
-            else:
-                logger.info("Нет активных скриптов для генерации. Настройте ACTIVE_SCRIPTS.")
-        else:
-            logger.info("Генерация скриптов отключена (не включена в ACTIVE_OPERATIONS)")
-        
-        # Операция: Обработка JSON файлов в Excel
-        if "process_json" in ACTIVE_OPERATIONS:
-            logger.info("=== ВЫПОЛНЕНИЕ ОПЕРАЦИИ: ОБРАБОТКА JSON В EXCEL ===")
-            
-            # Собираем JSON файлы из конфигураций активных скриптов
-            json_files_to_process = []
             for script_name in ACTIVE_SCRIPTS:
-                if script_name in FUNCTION_CONFIGS and "json_file" in FUNCTION_CONFIGS[script_name]:
-                    json_file = FUNCTION_CONFIGS[script_name]["json_file"]
-                    if json_file not in json_files_to_process:
-                        json_files_to_process.append(json_file)
-            
-            if json_files_to_process:
-                logger.info(f"JSON файлы для обработки: {', '.join(json_files_to_process)}")
-                processed_count = 0
-                
-                for file_name in json_files_to_process:
-                    if convert_specific_json_file(file_name):
-                        processed_count += 1
-                
-                if processed_count > 0:
-                    logger.info(LOG_MESSAGES['json_files_processed'].format(count=processed_count))
+                if script_name in FUNCTION_CONFIGS:
+                    config = FUNCTION_CONFIGS[script_name]
+                    active_operations = config.get("active_operations", "scripts_only")
+                    
+                    logger.info(f"=== ОБРАБОТКА СКРИПТА: {script_name} ===")
+                    logger.info(f"Активные операции для {script_name}: {active_operations}")
+                    
+                    # Генерация скриптов
+                    if active_operations in ["scripts_only", "both"]:
+                        logger.info(f"Генерация скрипта: {script_name}")
+                        if script_name == "leaders_for_admin":
+                            generate_leaders_for_admin_script()
+                        elif script_name == "reward":
+                            generate_reward_script()
+                        elif script_name == "profile":
+                            generate_profile_script()
+                        elif script_name == "news_details":
+                            generate_news_details_script()
+                        elif script_name == "address_book_tn":
+                            generate_address_book_tn_script()
+                        elif script_name == "address_book_dev":
+                            generate_address_book_dev_script()
+                        elif script_name == "orders":
+                            generate_orders_script()
+                        elif script_name == "news_list":
+                            generate_news_list_script()
+                        elif script_name == "rating_list":
+                            generate_rating_list_script()
+                        else:
+                            generate_script_universal(script_name)
+                    
+                    # Обработка JSON файлов
+                    if active_operations in ["json_only", "both"]:
+                        if "json_file" in config:
+                            json_file = config["json_file"]
+                            logger.info(f"Обработка JSON файла: {json_file}")
+                            convert_specific_json_file(json_file)
+                        else:
+                            logger.warning(f"Для скрипта {script_name} не указан json_file")
                 else:
-                    logger.info(LOG_MESSAGES['json_no_files_found'])
-            else:
-                logger.info(LOG_MESSAGES['json_no_files_found'])
+                    logger.error(f"Неизвестный скрипт: {script_name}")
         else:
-            logger.info("Обработка JSON файлов отключена (не включена в ACTIVE_OPERATIONS)")
+            logger.info("Нет активных скриптов для обработки. Настройте ACTIVE_SCRIPTS.")
             
         # Альтернативный способ - ручной вызов конкретных функций
         # Раскомментируйте нужные строки для тестирования
