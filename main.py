@@ -30,7 +30,7 @@ from openpyxl.formatting.rule import ColorScaleRule, CellIsRule
 # =============================================================================
 
 # Базовая папка проекта
-BASE_DIR = r"/Users/orionflash/Desktop/MyProject/Gen_Load_Game_Script/WORK"
+BASE_DIR = r"/Users/orionflash/Desktop/MyProject/Gen_Load_Game_Script/Project_Game_Load_Script-Cursor/Generate_LoadDB_Script_Gamification/WORK"
 
 # Настройки логирования
 LOG_LEVEL = "DEBUG"  # Уровень детализации логов: "INFO" - основная информация, "DEBUG" - подробная отладочная информация
@@ -57,6 +57,7 @@ FILE_EXTENSIONS = {
 # Выбор активных скриптов для генерации (глобально)
 ACTIVE_SCRIPTS = [
     "leaders_for_admin",  # Скрипт для получения информации по участникам турнира (LeadersForAdmin)
+    "reward",  # Скрипт для выгрузки профилей участников по кодам наград (Reward)
     # "reward",             # Скрипт для получения информации о наградах сотрудников
     # "profile",            # Скрипт для получения профилей сотрудников
     # "news_details",       # Скрипт для получения детальной карточки новости
@@ -95,7 +96,7 @@ TXT_DELIMITERS = [",", ";", "\t", " ", "\n", "\r\n", "|", ":", ".", "!", "?", "@
 
 # Настройки для CSV файлов
 CSV_DELIMITER = ";"  # Разделитель колонок в CSV файлах (точка с запятой для европейского формата)
-CSV_ENCODING = "utf-8"  # Кодировка CSV файлов (поддерживает кириллицу и специальные символы)
+CSV_ENCODING = "utf-8"  # Кодировка для CSV файлов (поддерживает кириллицу и специальные символы)
 CSV_COLUMN_NAME = "data_column"  # Название столбца по умолчанию для извлечения данных (если не указан конкретный)
 
 # Тестовые данные для работы без внешнего файла
@@ -237,23 +238,50 @@ FUNCTION_CONFIGS = {
         "excel_file": "LeadersForAdmin_Excel",  # Ключ: имя Excel файла для создания (без расширения)
         "excel_freeze_cell": "B2"  # Ключ: ячейка для закрепления в Excel (B2 = первая строка и первая колонка)
     },
-    "reward": {  # Ключ: конфигурация для скрипта REWARD (информация о наградах сотрудников)
-        "name": "REWARD",  # Ключ: название скрипта для отображения
-        "description": "Информация о сотрудниках которые уже получили награды",  # Ключ: описание назначения скрипта
+    "reward": {  # Ключ: конфигурация для скрипта REWARD (выгрузка профилей участников по кодам наград)
+        "name": "Reward",  # Ключ: название скрипта для отображения
+        "description": "Выгрузка профилей участников по кодам наград",  # Ключ: описание назначения скрипта
         "active_operations": "scripts_only",  # Ключ: активные операции ("scripts_only", "json_only", "both")
-        "domain": "rewards.example.com",  # Ключ: домен для API запросов
-        "params": {  # Ключ: параметры API запросов
-            "api_endpoint": "/api/rewards/list",  # Ключ: конечная точка API
-            "include_details": True,  # Ключ: включать ли детали
-            "status": "received",  # Ключ: статус наград
-            "date_from": "2024-01-01"  # Ключ: дата начала периода
+        "variants": {  # Ключ: варианты конфигурации (SIGMA/ALPHA)
+            "sigma": {  # Ключ: вариант SIGMA (продакшн окружение)
+                "name": "Reward (SIGMA)",  # Ключ: название варианта
+                "description": "Выгрузка профилей участников по кодам наград - SIGMA",  # Ключ: описание варианта
+                "domain": "https://salesheroes.sberbank.ru",  # Ключ: домен для SIGMA
+                "params": {
+                    "api_path": "/bo/rmkib.gamification/api/v1/badges/",  # Ключ: путь к API
+                    "service": "profiles"  # Ключ: название сервиса
+                },
+                "timeout": 30000,  # Ключ: таймаут запроса в миллисекундах
+                "retry_count": 3,  # Ключ: количество попыток при ошибке
+                "delay_between_requests": 5  # Ключ: задержка между запросами в миллисекундах
+            },
+            "alpha": {  # Ключ: вариант ALPHA (тестовое окружение)
+                "name": "Reward (ALPHA)",  # Ключ: название варианта
+                "description": "Выгрузка профилей участников по кодам наград - ALPHA",  # Ключ: описание варианта
+                "domain": "https://efs-our-business-prom.omega.sbrf.ru",  # Ключ: домен для ALPHA
+                "params": {
+                    "api_path": "/bo/rmkib.gamification/api/v1/badges/",  # Ключ: путь к API
+                    "service": "profiles"  # Ключ: название сервиса
+                },
+                "timeout": 30000,  # Ключ: таймаут запроса в миллисекундах
+                "retry_count": 3,  # Ключ: количество попыток при ошибке
+                "delay_between_requests": 10  # Ключ: задержка между запросами в миллисекундах
+            }
         },
-        "data_source": "file",  # Ключ: источник данных
+        "selected_variant": "sigma",  # Ключ: выбранный вариант (sigma/alpha)
+        "data_source": "external_file",  # Ключ: источник данных (file/variable/external_file)
         "input_format": "CSV",  # Ключ: формат входного файла
-        "csv_column": "employee_id",  # Ключ: название столбца для извлечения данных
+        "csv_column": "REWARD_CODE",  # Ключ: название столбца для извлечения данных
         "csv_delimiter": ";",  # Ключ: разделитель в CSV файле
         "csv_encoding": "utf-8",  # Ключ: кодировка CSV файла
-        "json_file": "reward"  # Ключ: имя JSON файла для обработки (без расширения)
+        "input_file": "REWARD (PROM) 2025-07-24 v1",  # Ключ: имя входного файла (без расширения)
+        "processing_options": {  # Ключ: опции обработки данных
+            "include_photo_data": False,  # Ключ: включать ли данные фотографий
+            "include_division_ratings": True,  # Ключ: включать ли рейтинги подразделений
+            "include_badge_info": True,  # Ключ: включать ли информацию о наградах
+            "max_profiles_per_request": 1000,  # Ключ: максимальное количество профилей на запрос
+            "skip_empty_profiles": True  # Ключ: пропускать ли пустые профили
+        }
     },
     "profile": {  # Ключ: конфигурация для скрипта PROFILE (профили сотрудников)
         "name": "PROFILE",  # Ключ: название скрипта для отображения
@@ -632,7 +660,7 @@ def save_script_to_file(script_content, script_name, config_key=None):
         safe_name = script_name.replace(' ', '_').replace('(', '').replace(')', '').replace('/', '_')
         
         # Добавляем информацию о варианте если есть
-        if config_key == "leaders_for_admin":
+        if config_key in ["leaders_for_admin", "reward"]:
             config = FUNCTION_CONFIGS[config_key]
             selected_variant = config.get("selected_variant", "sigma")
             filename = f"{safe_name}_{selected_variant.upper()}_{timestamp}.txt"
@@ -755,6 +783,101 @@ def flatten_leader_data(leader_data):
                 flattened[f'{group_code}_placeInRating'] = ''
             
             flattened[f'{group_code}_ratingCategoryName'] = rating.get('ratingCategoryName', '')
+    
+    return flattened
+
+def flatten_reward_profile_data(profile_data):
+    """
+    Преобразование данных профиля награды в плоскую структуру
+    
+    Args:
+        profile_data (dict): Данные профиля из API наград
+        
+    Returns:
+        dict: Плоская структура данных профиля
+    """
+    flattened = {}
+    
+    # Основные поля профиля
+    flattened['rewardCode'] = profile_data.get('rewardCode', '')
+    flattened['badgeName'] = profile_data.get('badgeName', '')
+    flattened['badgeDescription'] = profile_data.get('badgeDescription', '')
+    flattened['badgeType'] = profile_data.get('badgeType', '')
+    flattened['badgeCategory'] = profile_data.get('badgeCategory', '')
+    
+    # Поля профиля сотрудника
+    flattened['employeeNumber'] = profile_data.get('employeeNumber', '')
+    flattened['lastName'] = profile_data.get('lastName', '')
+    flattened['firstName'] = profile_data.get('firstName', '')
+    flattened['middleName'] = profile_data.get('middleName', '')
+    flattened['fullName'] = profile_data.get('fullName', '')
+    
+    # Контактная информация
+    flattened['email'] = profile_data.get('email', '')
+    flattened['phone'] = profile_data.get('phone', '')
+    flattened['mobilePhone'] = profile_data.get('mobilePhone', '')
+    
+    # Организационная информация
+    flattened['terDivisionName'] = profile_data.get('terDivisionName', '')
+    flattened['divisionName'] = profile_data.get('divisionName', '')
+    flattened['departmentName'] = profile_data.get('departmentName', '')
+    flattened['positionName'] = profile_data.get('positionName', '')
+    flattened['employeeStatus'] = profile_data.get('employeeStatus', '')
+    flattened['businessBlock'] = profile_data.get('businessBlock', '')
+    
+    # Информация о награде
+    flattened['awardDate'] = profile_data.get('awardDate', '')
+    flattened['awardReason'] = profile_data.get('awardReason', '')
+    flattened['awardLevel'] = profile_data.get('awardLevel', '')
+    flattened['awardValue'] = profile_data.get('awardValue', '')
+    
+    # Статистика и показатели
+    flattened['indicatorValue'] = profile_data.get('indicatorValue', '')
+    flattened['successValue'] = profile_data.get('successValue', '')
+    flattened['rating'] = profile_data.get('rating', '')
+    flattened['placeInRating'] = profile_data.get('placeInRating', '')
+    
+    # Дополнительные поля
+    flattened['photoUrl'] = profile_data.get('photoUrl', '')
+    flattened['isActive'] = profile_data.get('isActive', '')
+    flattened['lastActivityDate'] = profile_data.get('lastActivityDate', '')
+    
+    # Создаем полное имя, если его нет
+    if not flattened['fullName']:
+        name_parts = [flattened['lastName'], flattened['firstName'], flattened['middleName']]
+        flattened['fullName'] = ' '.join([part for part in name_parts if part]).strip()
+    
+    # Парсим числовые значения
+    flattened['indicatorValue_parsed'] = parse_float_safe(profile_data.get('indicatorValue', 0), f"indicatorValue for {flattened['fullName']}")
+    flattened['successValue_parsed'] = parse_float_safe(profile_data.get('successValue', 0), f"successValue for {flattened['fullName']}")
+    flattened['awardValue_parsed'] = parse_float_safe(profile_data.get('awardValue', 0), f"awardValue for {flattened['fullName']}")
+    
+    # Обработка вложенных структур (если есть)
+    if 'divisionRatings' in profile_data:
+        division_ratings = profile_data['divisionRatings']
+        categories = ['BANK', 'TB', 'GOSB']
+        for category in categories:
+            flattened[f'{category}_groupId'] = ''
+            flattened[f'{category}_placeInRating'] = ''
+            flattened[f'{category}_ratingCategoryName'] = ''
+        
+        for rating in division_ratings:
+            if isinstance(rating, dict):
+                group_code = rating.get('groupCode', '')
+                if group_code in categories:
+                    group_id_raw = rating.get('groupId', '')
+                    try:
+                        flattened[f'{group_code}_groupId'] = int(float(group_id_raw)) if group_id_raw else ''
+                    except (ValueError, TypeError):
+                        flattened[f'{group_code}_groupId'] = ''
+                    
+                    place_in_rating_raw = rating.get('placeInRating', '')
+                    try:
+                        flattened[f'{group_code}_placeInRating'] = int(float(place_in_rating_raw)) if place_in_rating_raw else ''
+                    except (ValueError, TypeError):
+                        flattened[f'{group_code}_placeInRating'] = ''
+                    
+                    flattened[f'{group_code}_ratingCategoryName'] = rating.get('ratingCategoryName', '')
     
     return flattened
 
@@ -885,24 +1008,78 @@ def create_statistics_sheet(workbook, data_df):
         cell.fill = header_fill
         cell.font = header_font
 
+def create_reward_summary_sheet(workbook, data_df):
+    """Создание сводного листа для данных наград"""
+    if 'DATA' not in workbook.sheetnames:
+        return
+    
+    # Создаем лист REWARD_SUMMARY
+    if 'REWARD_SUMMARY' in workbook.sheetnames:
+        workbook.remove(workbook['REWARD_SUMMARY'])
+    summary_sheet = workbook.create_sheet('REWARD_SUMMARY')
+    
+    # Сводная статистика по наградам
+    summary_data = [
+        ["Параметр", "Значение"],
+        ["Общее количество профилей с наградами", len(data_df)],
+        ["Количество уникальных кодов наград", data_df['rewardCode'].nunique() if 'rewardCode' in data_df.columns else 0],
+        ["Количество уникальных сотрудников", data_df['employeeNumber'].nunique() if 'employeeNumber' in data_df.columns else 0],
+        ["Количество уникальных подразделений", data_df['terDivisionName'].nunique() if 'terDivisionName' in data_df.columns else 0]
+    ]
+    
+    # Статистика по типам наград
+    if 'badgeType' in data_df.columns:
+        badge_type_stats = data_df['badgeType'].value_counts()
+        summary_data.append(["", ""])
+        summary_data.append(["Статистика по типам наград", ""])
+        for badge_type, count in badge_type_stats.items():
+            summary_data.append([badge_type, count])
+    
+    # Статистика по категориям наград
+    if 'badgeCategory' in data_df.columns:
+        badge_category_stats = data_df['badgeCategory'].value_counts()
+        summary_data.append(["", ""])
+        summary_data.append(["Статистика по категориям наград", ""])
+        for badge_category, count in badge_category_stats.items():
+            summary_data.append([badge_category, count])
+    
+    # Статистика по структурам данных
+    if 'structure' in data_df.columns:
+        structure_stats = data_df['structure'].value_counts()
+        summary_data.append(["", ""])
+        summary_data.append(["Статистика по структурам данных", ""])
+        for structure, count in structure_stats.items():
+            summary_data.append([structure, count])
+    
+    # Записываем данные в лист
+    for row_idx, row_data in enumerate(summary_data, 1):
+        for col_idx, value in enumerate(row_data, 1):
+            summary_sheet.cell(row=row_idx, column=col_idx, value=value)
+    
+    # Применяем стили
+    header_fill = PatternFill(start_color=EXCEL_COLORS["subheader"], end_color=EXCEL_COLORS["subheader"], fill_type="solid")
+    header_font = Font(bold=True)
+    
+    for cell in summary_sheet[1]:
+        cell.fill = header_fill
+        cell.font = header_font
+    
+    logger.info("Лист REWARD_SUMMARY создан успешно")
+
 # =============================================================================
 # ФУНКЦИИ ГЕНЕРАЦИИ СКРИПТОВ
 # =============================================================================
 
-@measure_time
-def generate_script_universal(config_key, data_list=None):
+def load_script_data(config_key, data_list=None):
     """
-    Универсальная функция для генерации скриптов
-    
-    Генерирует JavaScript скрипт на основе конфигурации и данных.
-    Выводит скрипт в консоль и копирует в буфер обмена.
+    Общая функция для загрузки данных для скриптов
     
     Args:
         config_key (str): Ключ конфигурации из FUNCTION_CONFIGS
         data_list (list, optional): Список данных для обработки
         
     Returns:
-        str: Сгенерированный JavaScript скрипт
+        tuple: (config, data_list, selected_variant, variant_config)
     """
     config = FUNCTION_CONFIGS[config_key]
     
@@ -922,7 +1099,7 @@ def generate_script_universal(config_key, data_list=None):
                 config["csv_column"]
             )
         elif config["data_source"] == "external_file":
-            # Загрузка данных из внешнего файла (например, для LeadersForAdmin)
+            # Загрузка данных из внешнего файла
             file_extension = FILE_EXTENSIONS.get(config["input_format"], ".csv")
             input_dir = os.path.join(BASE_DIR, SUBDIRECTORIES["INPUT"])
             filepath = os.path.join(input_dir, config["input_file"] + file_extension)
@@ -937,31 +1114,54 @@ def generate_script_universal(config_key, data_list=None):
             # Использование тестовых данных
             data_list = TEST_DATA_LIST.copy()
     
-    # Логирование процесса генерации
-    if config_key == "leaders_for_admin":
-        selected_variant = config.get("selected_variant", "sigma")
-        variant_config = config["variants"][selected_variant]
-        logger.debug(LOG_MESSAGES['script_generation'].format(script_name=f"{config['name']} ({selected_variant.upper()})"))
-        logger.debug(LOG_MESSAGES['config_loaded'].format(script_name=f"{config['name']} ({selected_variant.upper()})"))
-        logger.debug(f"Выбранный вариант: {selected_variant.upper()}")
-    else:
-        logger.debug(LOG_MESSAGES['script_generation'].format(script_name=config['name']))
-        logger.debug(LOG_MESSAGES['config_loaded'].format(script_name=config['name']))
+    # Получение варианта конфигурации
+    selected_variant = config.get("selected_variant", "sigma")
+    variant_config = config["variants"][selected_variant]
     
+    # Логирование процесса генерации
+    logger.debug(LOG_MESSAGES['script_generation'].format(script_name=f"{config['name']} ({selected_variant.upper()})"))
+    logger.debug(LOG_MESSAGES['config_loaded'].format(script_name=f"{config['name']} ({selected_variant.upper()})"))
+    logger.debug(f"Выбранный вариант: {selected_variant.upper()}")
     logger.debug(LOG_MESSAGES['data_source_selected'].format(
         source=config['data_source'], 
         format=config['input_format']
     ))
     
-    # Генерация JavaScript скрипта на основе типа
-    if config_key == "leaders_for_admin":
-        # Получение выбранного варианта
-        selected_variant = config.get("selected_variant", "sigma")
-        variant_config = config["variants"][selected_variant]
+    return config, data_list, selected_variant, variant_config
+
+def save_and_copy_script(script, config, config_key, data_list):
+    """
+    Общая функция для сохранения скрипта
+    Args:
+        script (str): Сгенерированный JavaScript скрипт
+        config (dict): Конфигурация скрипта
+        config_key (str): Ключ конфигурации
+        data_list (list): Список данных
+    """
+    # Сохранение скрипта в файл
+    saved_filepath = save_script_to_file(script, config['name'], config_key)
+    logger.info(LOG_MESSAGES['script_generated'].format(script_name=config['name'], count=len(data_list)))
+
+# =============================================================================
+# ФУНКЦИИ ГЕНЕРАЦИИ JAVASCRIPT СКРИПТОВ (ЗАГЛУШКИ)
+# =============================================================================
+
+@measure_time
+def generate_leaders_for_admin_script(data_list=None):
+    """
+    Генерация скрипта для получения информации по участникам турнира
+    
+    Args:
+        data_list (list, optional): Список ID участников
         
-        # Специальная генерация для LeadersForAdmin
-        timestamp = datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
-        script = f"""// ==UserScript==
+    Returns:
+        str: Сгенерированный JavaScript скрипт
+    """
+    # Загрузка данных и конфигурации
+    config, data_list, selected_variant, variant_config = load_script_data("leaders_for_admin", data_list)
+    
+    # Генерация JavaScript скрипта для LeadersForAdmin
+    script = f"""// ==UserScript==
 // Скрипт для DevTools. Выгрузка лидеров для всех Tournament ID (одна страница на турнир)
 // Вариант: {selected_variant.upper()}
 // Сгенерировано: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
@@ -1054,61 +1254,148 @@ def generate_script_universal(config_key, data_list=None):
   a.remove();
   console.log(`🏁 Обработка завершена. Всего: ${{ids.length}}. Успешно: ${{processed}}. Пропущено: ${{skipped}}. Ошибок: ${{errors}}. Файл скачан.`);
 }})();"""
-    else:
-        # Заглушка для остальных типов
-        script = f"""
-// JavaScript скрипт для {config['name']}
-// Описание: {config['description']}
-// Домен: {config['domain']}
-// Параметры: {config['params']}
-// Данные: {len(data_list)} элементов
-
-console.log('Скрипт {config['name']} запущен');
-// Здесь будет реальная логика генерации скрипта
-console.log('Обработка данных:', {data_list[:3] if len(data_list) > 3 else data_list});
-"""
     
-    # Вывод скрипта в консоль
-    print(f"=== GENERATED SCRIPT: {config['name']} ===")
-    print(script)
-    
-    # Сохранение скрипта в файл
-    saved_filepath = save_script_to_file(script, config['name'], config_key)
-    
-    # Копирование в буфер обмена
-    copy_to_clipboard(script)
-    
-    logger.info(LOG_MESSAGES['script_generated'].format(script_name=config['name'], count=len(data_list)))
+    # Сохранение и копирование скрипта
+    save_and_copy_script(script, config, "leaders_for_admin", data_list)
     
     return script
 
-# =============================================================================
-# ФУНКЦИИ ГЕНЕРАЦИИ JAVASCRIPT СКРИПТОВ (ЗАГЛУШКИ)
-# =============================================================================
-
-def generate_leaders_for_admin_script(data_list=None):
-    """
-    Генерация скрипта для получения информации по участникам турнира
-    
-    Args:
-        data_list (list, optional): Список ID участников
-        
-    Returns:
-        str: Сгенерированный JavaScript скрипт
-    """
-    return generate_script_universal("leaders_for_admin", data_list)
-
+@measure_time
 def generate_reward_script(data_list=None):
     """
-    Генерация скрипта для получения информации о наградах
-    
+    Генерация скрипта для выгрузки профилей участников по кодам наград с пагинацией
     Args:
-        data_list (list, optional): Список ID сотрудников
-        
+        data_list (list, optional): Список кодов наград
     Returns:
         str: Сгенерированный JavaScript скрипт
     """
-    return generate_script_universal("reward", data_list)
+    import datetime
+    import json
+    config, data_list, selected_variant, variant_config = load_script_data("reward", data_list)
+    delay = variant_config.get('delay_between_requests', 5)
+    max_retries = variant_config.get('retry_count', 3)
+    timeout = variant_config.get('timeout', 30000)
+    domain = variant_config['domain']
+    api_path = variant_config['params']['api_path']
+    service = variant_config['params']['service']
+    base_url = f"{domain}{api_path}"
+    ids_json = json.dumps(data_list, indent=2, ensure_ascii=False)
+    script = f'''// ==UserScript==
+// Скрипт для DevTools. Выгрузка профилей участников по кодам наград с пагинацией
+// Вариант: {selected_variant.upper()}
+(async () => {{
+  function removePhotoData(obj) {{
+    if (Array.isArray(obj)) {{ obj.forEach(removePhotoData); }}
+    else if (obj && typeof obj === 'object') {{
+      Object.keys(obj).forEach(key => {{
+        if (key === 'photoData') delete obj[key];
+        else removePhotoData(obj[key]);
+      }});
+    }}
+  }}
+
+  function getTimestamp() {{
+    const d = new Date();
+    const pad = n => n.toString().padStart(2, '0');
+    return d.getFullYear().toString() + pad(d.getMonth() + 1) + pad(d.getDate()) + '-' + pad(d.getHours()) + pad(d.getMinutes()) + pad(d.getSeconds());
+  }}
+
+  function extractProfiles(data) {{
+    try {{
+      if (data?.body?.badge?.profiles && Array.isArray(data.body.badge.profiles)) {{
+        return {{ profiles: data.body.badge.profiles }};
+      }} else if (data?.body?.profiles && Array.isArray(data.body.profiles)) {{
+        return {{ profiles: data.body.profiles }};
+      }} else if (Array.isArray(data?.body)) {{
+        return {{ profiles: data.body }};
+      }} else if (Array.isArray(data)) {{
+        return {{ profiles: data }};
+      }}
+      return null;
+    }} catch (e) {{
+      console.error('Ошибка при извлечении профилей:', e);
+      return null;
+    }}
+  }}
+
+  function extractContestantsCount(text) {{
+    const match = text?.match(/(\d+)/);
+    return match ? parseInt(match[1], 10) : 0;
+  }}
+
+  async function fetchWithRetry(url, options, maxRetries = {max_retries}, timeout = {timeout}) {{
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {{
+      try {{
+        const controller = new AbortController();
+        const id = setTimeout(() => controller.abort(), timeout);
+        const response = await fetch(url, {{ ...options, signal: controller.signal }});
+        clearTimeout(id);
+        return response;
+      }} catch (e) {{
+        if (attempt === maxRetries) throw e;
+        await new Promise(r => setTimeout(r, 1000 * attempt));
+      }}
+    }}
+  }}
+
+  const ids = {ids_json};
+  const BASE_URL = '{base_url}';
+  const results = {{}};
+  let totalProfiles = 0;
+
+  for (let i = 0; i < ids.length; i++) {{
+    const code = ids[i];
+    const baseUrl = `${{BASE_URL}}${{code}}/profiles`;
+    console.log(`\n🔍 [${{i + 1}}/${{ids.length}}] Код: ${{code}}`);
+    try {{
+      const firstResp = await fetchWithRetry(`${{baseUrl}}?pageNum=1&divisionLevel=BANK`, {{
+        headers: {{ 'Accept': 'application/json', 'Cookie': document.cookie, 'User-Agent': navigator.userAgent }},
+        credentials: 'include'
+      }});
+      const firstData = await firstResp.json();
+      const count = extractContestantsCount(firstData?.body?.badge?.contestants);
+      const pages = Math.ceil(count / 100) || 1;
+      console.log(`👥 Участников: ${{count}}, Страниц: ${{pages}}`);
+      let profiles = [];
+      for (let page = 1; page <= pages; page++) {{
+        const url = `${{baseUrl}}?pageNum=${{page}}&divisionLevel=BANK`;
+        console.log(`📄 Страница ${{page}} из ${{pages}}`);
+        const resp = await fetchWithRetry(url, {{
+          headers: {{ 'Accept': 'application/json', 'Cookie': document.cookie, 'User-Agent': navigator.userAgent }},
+          credentials: 'include'
+        }});
+        const data = await resp.json();
+        const parsed = extractProfiles(data);
+        if (parsed?.profiles?.length) profiles.push(...parsed.profiles);
+        await new Promise(r => setTimeout(r, {delay}));
+      }}
+      results[code] = {{
+        profilesCount: profiles.length,
+        profiles,
+        badgeInfo: firstData?.body?.badge || {{}},
+        totalContestants: count,
+        pages
+      }};
+      totalProfiles += profiles.length;
+    }} catch (e) {{
+      console.error(`❌ Ошибка при обработке ${{code}}:`, e);
+    }}
+  }}
+
+  console.log('\n📦 Удаляем photoData...');
+  removePhotoData(results);
+  const ts = getTimestamp();
+  const blob = new Blob([JSON.stringify(results, null, 2)], {{ type: 'application/json' }});
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `profiles_{selected_variant.upper()}_${{ts}}.json`;
+  a.click();
+  console.log(`\n✅ Завершено. Всего профилей: ${{totalProfiles}}`);
+}})();
+'''
+    save_script_to_file(script, config['name'], "reward")
+    logger.info(LOG_MESSAGES['script_generated'].format(script_name=config['name'], count=len(data_list)))
+    return script
 
 def generate_profile_script(data_list=None):
     """
@@ -1198,15 +1485,82 @@ def generate_rating_list_script(data_list=None):
 # ФУНКЦИИ ОБРАБОТКИ JSON В EXCEL
 # =============================================================================
 
-@measure_time
-def convert_json_to_excel(input_json_path, output_excel_path, config_key=None):
+def load_json_data(input_json_path):
     """
-    Конвертация JSON файла в Excel
+    Общая функция для загрузки JSON данных
+    
+    Args:
+        input_json_path (str): Путь к входному JSON файлу
+        
+    Returns:
+        dict: Загруженные JSON данные
+    """
+    try:
+        logger.info(LOG_MESSAGES['json_data_loading'])
+        with open(input_json_path, 'r', encoding='utf-8') as f:
+            json_data = json.load(f)
+        return json_data
+    except Exception as e:
+        logger.error(f"Ошибка при загрузке JSON файла {input_json_path}: {e}")
+        return None
+
+def save_excel_file(df, output_excel_path, config_key=None):
+    """
+    Общая функция для сохранения DataFrame в Excel с применением стилей
+    
+    Args:
+        df (DataFrame): DataFrame для сохранения
+        output_excel_path (str): Путь к выходному Excel файлу
+        config_key (str, optional): Ключ конфигурации для получения настроек
+        
+    Returns:
+        bool: True если сохранение успешно, False в противном случае
+    """
+    try:
+        # Создание директории для выходного файла если не существует
+        output_dir = os.path.dirname(output_excel_path)
+        if output_dir and not os.path.exists(output_dir):
+            os.makedirs(output_dir)
+            logger.info(LOG_MESSAGES['json_directory_created'].format(directory=output_dir))
+        
+        # Создание Excel файла
+        logger.info(LOG_MESSAGES['json_excel_creation'])
+        with pd.ExcelWriter(output_excel_path, engine='openpyxl') as writer:
+            df.to_excel(writer, sheet_name='DATA', index=False)
+            workbook = writer.book
+            
+            # Получаем настройки закрепления из конфигурации
+            freeze_cell = "B2"  # По умолчанию закрепляем первую строку и первую колонку
+            if config_key and config_key in FUNCTION_CONFIGS:
+                freeze_cell = FUNCTION_CONFIGS[config_key].get('excel_freeze_cell', "B2")
+            
+            # Применяем стили с настройками закрепления
+            apply_excel_styling(workbook, freeze_cell)
+            
+            # Создание дополнительных листов
+            create_summary_sheet(workbook, df)
+            create_statistics_sheet(workbook, df)
+            
+            # Создание специального листа для reward данных
+            if config_key == "reward":
+                create_reward_summary_sheet(workbook, df)
+        
+        logger.info(LOG_MESSAGES['json_excel_success'].format(file_path=output_excel_path))
+        return True
+        
+    except Exception as e:
+        logger.error(f"Ошибка при создании Excel файла: {e}")
+        return False
+
+@measure_time
+def convert_leaders_json_to_excel(input_json_path, output_excel_path, config_key=None):
+    """
+    Конвертация JSON файла с данными лидеров в Excel
     
     Args:
         input_json_path (str): Путь к входному JSON файлу
         output_excel_path (str): Путь к выходному Excel файлу
-        config_key (str, optional): Ключ конфигурации для получения настроек Excel
+        config_key (str, optional): Ключ конфигурации для получения настроек
         
     Returns:
         bool: True если конвертация успешна, False в противном случае
@@ -1219,16 +1573,10 @@ def convert_json_to_excel(input_json_path, output_excel_path, config_key=None):
             logger.error(LOG_MESSAGES['json_file_not_found'].format(file_path=input_json_path))
             return False
         
-        # Создание директории для выходного файла если не существует
-        output_dir = os.path.dirname(output_excel_path)
-        if output_dir and not os.path.exists(output_dir):
-            os.makedirs(output_dir)
-            logger.info(LOG_MESSAGES['json_directory_created'].format(directory=output_dir))
-        
         # Загрузка JSON данных
-        logger.info(LOG_MESSAGES['json_data_loading'])
-        with open(input_json_path, 'r', encoding='utf-8') as f:
-            json_data = json.load(f)
+        json_data = load_json_data(input_json_path)
+        if json_data is None:
+            return False
         
         # Обработка данных
         logger.info(LOG_MESSAGES['json_data_processing'])
@@ -1293,33 +1641,221 @@ def convert_json_to_excel(input_json_path, output_excel_path, config_key=None):
         
         logger.info(LOG_MESSAGES['json_records_processed'].format(count=len(df)))
         
-        # Создание Excel файла
-        logger.info(LOG_MESSAGES['json_excel_creation'])
-        with pd.ExcelWriter(output_excel_path, engine='openpyxl') as writer:
-            # Основной лист с данными
-            df.to_excel(writer, sheet_name='DATA', index=False)
-            
-            # Получаем workbook для применения стилей
-            workbook = writer.book
-            
-            # Получаем настройки закрепления из конфигурации
-            freeze_cell = "B2"  # По умолчанию закрепляем первую строку и первую колонку
-            if config_key and config_key in FUNCTION_CONFIGS:
-                freeze_cell = FUNCTION_CONFIGS[config_key].get('excel_freeze_cell', "B2")
-            
-            # Применяем стили с настройками закрепления
-            apply_excel_styling(workbook, freeze_cell)
-            
-            # Создаем дополнительные листы
-            create_summary_sheet(workbook, df)
-            create_statistics_sheet(workbook, df)
-        
-        logger.info(LOG_MESSAGES['json_excel_success'].format(file_path=output_excel_path))
-        return True
+        # Сохранение в Excel
+        return save_excel_file(df, output_excel_path, config_key)
         
     except Exception as e:
-        logger.error(LOG_MESSAGES['json_conversion_error'].format(error=str(e)))
+        logger.error(f"Ошибка при конвертации JSON лидеров в Excel: {e}")
         return False
+
+def extract_profiles_from_data(data, structure):
+    """
+    Извлечение профилей из данных API наград
+    
+    Args:
+        data (dict): Данные ответа API
+        structure (str): Тип структуры данных
+        
+    Returns:
+        list: Список профилей или None
+    """
+    try:
+        if structure == 'body.badge.profiles':
+            # Структура 1: body.badge.profiles
+            if data.get('body', {}).get('badge', {}).get('profiles'):
+                return data['body']['badge']['profiles']
+        elif structure == 'body.profiles':
+            # Структура 2: body.profiles
+            if data.get('body', {}).get('profiles'):
+                return data['body']['profiles']
+        elif structure == 'body.array':
+            # Структура 3: прямой массив профилей в body
+            if isinstance(data.get('body'), list):
+                return data['body']
+        elif structure == 'root.array':
+            # Структура 4: прямой массив в корне
+            if isinstance(data, list):
+                return data
+        
+        # Попытка автоматического определения структуры
+        if data.get('body', {}).get('badge', {}).get('profiles'):
+            return data['body']['badge']['profiles']
+        elif data.get('body', {}).get('profiles'):
+            return data['body']['profiles']
+        elif isinstance(data.get('body'), list):
+            return data['body']
+        elif isinstance(data, list):
+            return data
+        
+        return None
+    except Exception as e:
+        logger.error(f"Ошибка при извлечении профилей из данных: {e}")
+        return None
+
+@measure_time
+def convert_reward_json_to_excel(input_json_path, output_excel_path, config_key=None):
+    """
+    Конвертация JSON файла с данными наград в Excel
+    
+    Args:
+        input_json_path (str): Путь к входному JSON файлу
+        output_excel_path (str): Путь к выходному Excel файлу
+        config_key (str, optional): Ключ конфигурации для получения настроек
+        
+    Returns:
+        bool: True если конвертация успешна, False в противном случае
+    """
+    try:
+        logger.info(LOG_MESSAGES['json_conversion_start'].format(input=input_json_path, output=output_excel_path))
+        
+        # Проверка существования входного файла
+        if not os.path.exists(input_json_path):
+            logger.error(LOG_MESSAGES['json_file_not_found'].format(file_path=input_json_path))
+            return False
+        
+        # Загрузка JSON данных
+        json_data = load_json_data(input_json_path)
+        if json_data is None:
+            return False
+        
+        # Обработка данных
+        logger.info(LOG_MESSAGES['json_data_processing'])
+        all_profiles_data = []
+        
+        if isinstance(json_data, dict):
+            # Обрабатываем все коды наград
+            total_rewards = 0
+            total_profiles = 0
+            
+            for reward_code, reward_value in json_data.items():
+                # Новая структура данных (с информацией о структуре)
+                if isinstance(reward_value, dict):
+                    data = reward_value.get('data', {})
+                    structure = reward_value.get('structure', 'unknown')
+                    profiles_count = reward_value.get('profilesCount', 0)
+                    badge_info = reward_value.get('badgeInfo', {})
+                    
+                    # Извлекаем профили из данных
+                    profiles = extract_profiles_from_data(data, structure)
+                    
+                    if profiles:
+                        # Добавляем информацию о коде награды и данных награды к каждому профилю
+                        for profile in profiles:
+                            if isinstance(profile, dict):
+                                profile_with_reward = profile.copy()
+                                profile_with_reward['rewardCode'] = reward_code
+                                profile_with_reward['structure'] = structure
+                                
+                                # Добавляем информацию о награде
+                                if badge_info:
+                                    profile_with_reward['badgeName'] = badge_info.get('name', '')
+                                    profile_with_reward['badgeDescription'] = badge_info.get('description', '')
+                                    profile_with_reward['badgeType'] = badge_info.get('type', '')
+                                    profile_with_reward['badgeCategory'] = badge_info.get('category', '')
+                                
+                                all_profiles_data.append(profile_with_reward)
+                        
+                        total_rewards += 1
+                        total_profiles += len(profiles)
+                        logger.info(f"Найдено профилей для кода награды {reward_code}: {len(profiles)} (структура: {structure})")
+                
+                # Старая структура данных (для обратной совместимости)
+                elif isinstance(reward_value, list) and len(reward_value) > 0:
+                    # Проверяем, содержит ли первый элемент данные о награде
+                    first_item = reward_value[0]
+                    if isinstance(first_item, dict) and 'body' in first_item:
+                        body = first_item['body']
+                        # Проверяем разные возможные структуры данных
+                        profiles = None
+                        badge_info = None
+                        
+                        # Структура 1: body.badge.profiles
+                        if 'badge' in body and 'profiles' in body['badge']:
+                            profiles = body['badge']['profiles']
+                            badge_info = body['badge']
+                        # Структура 2: body.profiles (прямые профили)
+                        elif 'profiles' in body:
+                            profiles = body['profiles']
+                            badge_info = body
+                        
+                        if profiles and isinstance(profiles, list):
+                            # Добавляем информацию о коде награды и данных награды к каждому профилю
+                            for profile in profiles:
+                                if isinstance(profile, dict):
+                                    profile_with_reward = profile.copy()
+                                    profile_with_reward['rewardCode'] = reward_code
+                                    
+                                    # Добавляем информацию о награде
+                                    if badge_info:
+                                        profile_with_reward['badgeName'] = badge_info.get('name', '')
+                                        profile_with_reward['badgeDescription'] = badge_info.get('description', '')
+                                        profile_with_reward['badgeType'] = badge_info.get('type', '')
+                                        profile_with_reward['badgeCategory'] = badge_info.get('category', '')
+                                    
+                                    all_profiles_data.append(profile_with_reward)
+                            
+                            total_rewards += 1
+                            total_profiles += len(profiles)
+                            logger.info(f"Найдено профилей для кода награды {reward_code}: {len(profiles)} (старая структура)")
+            
+            logger.info(f"Обработано кодов наград: {total_rewards}, общее количество профилей: {total_profiles}")
+            profiles_data = all_profiles_data
+            
+        elif isinstance(json_data, list):
+            # Прямой список профилей
+            profiles_data = json_data
+            logger.info(f"Прямой список профилей: {len(profiles_data)}")
+        else:
+            logger.error(LOG_MESSAGES['json_invalid_format'])
+            return False
+        
+        if not profiles_data:
+            logger.error("Не найдено данных профилей")
+            return False
+        
+        # Преобразование данных в плоскую структуру
+        flattened_data = []
+        for profile in profiles_data:
+            flattened_profile = flatten_reward_profile_data(profile)
+            flattened_data.append(flattened_profile)
+        
+        # Создание DataFrame
+        df = pd.DataFrame(flattened_data)
+        
+        if df.empty:
+            logger.warning("Нет данных для обработки")
+            return False
+        
+        logger.info(LOG_MESSAGES['json_records_processed'].format(count=len(df)))
+        
+        # Сохранение в Excel
+        return save_excel_file(df, output_excel_path, config_key)
+        
+    except Exception as e:
+        logger.error(f"Ошибка при конвертации JSON наград в Excel: {e}")
+        return False
+
+@measure_time
+def convert_json_to_excel(input_json_path, output_excel_path, config_key=None):
+    """
+    Универсальная конвертация JSON файла в Excel (для обратной совместимости)
+    
+    Args:
+        input_json_path (str): Путь к входному JSON файлу
+        output_excel_path (str): Путь к выходному Excel файлу
+        config_key (str, optional): Ключ конфигурации для получения настроек
+        
+    Returns:
+        bool: True если конвертация успешна, False в противном случае
+    """
+    # Определяем тип данных по config_key
+    if config_key == "leaders_for_admin":
+        return convert_leaders_json_to_excel(input_json_path, output_excel_path, config_key)
+    elif config_key == "reward":
+        return convert_reward_json_to_excel(input_json_path, output_excel_path, config_key)
+    else:
+        # По умолчанию используем обработку лидеров
+        return convert_leaders_json_to_excel(input_json_path, output_excel_path, config_key)
 
 @measure_time
 def convert_specific_json_file(file_name_without_extension, config_key=None):
@@ -1458,12 +1994,14 @@ def main():
         if ACTIVE_SCRIPTS:
             logger.info(f"Активные скрипты: {', '.join(ACTIVE_SCRIPTS)}")
             
+            # ПЕРВЫЙ ЭТАП: Генерация всех скриптов
+            logger.info("=== ЭТАП 1: ГЕНЕРАЦИЯ СКРИПТОВ ===")
             for script_name in ACTIVE_SCRIPTS:
                 if script_name in FUNCTION_CONFIGS:
                     config = FUNCTION_CONFIGS[script_name]
                     active_operations = config.get("active_operations", "scripts_only")
                     
-                    logger.info(f"=== ОБРАБОТКА СКРИПТА: {script_name} ===")
+                    logger.info(f"--- ОБРАБОТКА СКРИПТА: {script_name} ---")
                     logger.info(f"Активные операции для {script_name}: {active_operations}")
                     
                     # Генерация скриптов
@@ -1489,6 +2027,17 @@ def main():
                             generate_rating_list_script()
                         else:
                             generate_script_universal(script_name)
+                    else:
+                        logger.info(f"Пропуск генерации скрипта для {script_name} (режим: {active_operations})")
+                else:
+                    logger.error(f"Неизвестный скрипт: {script_name}")
+            
+            # ВТОРОЙ ЭТАП: Обработка всех JSON файлов
+            logger.info("=== ЭТАП 2: ОБРАБОТКА JSON ФАЙЛОВ ===")
+            for script_name in ACTIVE_SCRIPTS:
+                if script_name in FUNCTION_CONFIGS:
+                    config = FUNCTION_CONFIGS[script_name]
+                    active_operations = config.get("active_operations", "scripts_only")
                     
                     # Обработка JSON файлов
                     if active_operations in ["json_only", "both"]:
@@ -1498,8 +2047,8 @@ def main():
                             convert_specific_json_file(json_file, script_name)
                         else:
                             logger.warning(f"Для скрипта {script_name} не указан json_file")
-                else:
-                    logger.error(f"Неизвестный скрипт: {script_name}")
+                    else:
+                        logger.info(f"Пропуск обработки JSON для {script_name} (режим: {active_operations})")
         else:
             logger.info("Нет активных скриптов для обработки. Настройте ACTIVE_SCRIPTS.")
             
