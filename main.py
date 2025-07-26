@@ -32,7 +32,7 @@ from openpyxl.formatting.rule import ColorScaleRule, CellIsRule
 # Настройки логирования
 LOG_LEVEL = "DEBUG"  # Уровень детализации логов: "INFO" - основная информация, "DEBUG" - подробная отладочная информация
 LOG_DIR = r"/Users/orionflash/Desktop/MyProject/Gen_Load_Game_Script/LOGS"  # Абсолютный путь к директории для сохранения файлов логов
-LOG_FILENAME_BASE = "game_script_generator"  # Базовое имя файла лога (к нему добавляется дата и время)
+LOG_FILENAME_BASE = "LOG"  # Базовое имя файла лога (к нему добавляется дата и время)
 
 # Настройки входных и выходных данных
 INPUT_DIR = r"/Users/orionflash/Desktop/MyProject/Gen_Load_Game_Script/INPUT"  # Абсолютный путь к директории с входными файлами (CSV, TXT)
@@ -40,7 +40,7 @@ OUTPUT_DIR = r"/Users/orionflash/Desktop/MyProject/Gen_Load_Game_Script/OUTPUT" 
 
 # Настройки обработки данных
 DATA_SOURCE = "external_file"  # Источник данных: "file" - из основного файла, "variable" - из тестовых данных, "external_file" - из конфигурации функции
-INPUT_FORMAT = "CSV"  # Формат входного файла: "TXT" - текстовый файл, "CSV" - табличный файл с разделителями
+INPUT_FORMAT = "TXT"  # Формат входного файла: "TXT" - текстовый файл, "CSV" - табличный файл с разделителями
 INPUT_FILENAME = "input_data"  # Имя основного входного файла без расширения (расширение добавляется автоматически)
 INPUT_FILE_EXTENSION = ".txt"  # Расширение по умолчанию для основного входного файла (используется как fallback)
 
@@ -399,7 +399,7 @@ FUNCTION_CONFIGS = {
 
 # Настройки для генерации JavaScript скриптов (глобальные по умолчанию)
 # Используются как fallback значения, если не указаны в конфигурации конкретной функции
-BASE_DOMAIN = "example.com"  # Базовый домен для API запросов (используется по умолчанию)
+BASE_DOMAIN = "https://salesheroes.sberbank.ru"  # Базовый домен для API запросов (используется по умолчанию)
 REQUEST_PARAMETERS = {  # Дополнительные параметры запросов (заглушка для будущего использования)
     "param1": "value1",  # Ключ: параметр 1 (пример)
     "param2": "value2"   # Ключ: параметр 2 (пример)
@@ -737,6 +737,12 @@ def flatten_leader_data(leader_data):
     flattened['terDivisionName'] = leader_data.get('terDivisionName', '')
     flattened['employeeStatus'] = leader_data.get('employeeStatus', '')
     flattened['businessBlock'] = leader_data.get('businessBlock', '')
+    
+    # Поля турнира (добавлены при обработке всех турниров)
+    flattened['tournamentId'] = leader_data.get('tournamentId', '')
+    flattened['tournamentIndicator'] = leader_data.get('tournamentIndicator', '')
+    flattened['tournamentStatus'] = leader_data.get('tournamentStatus', '')
+    flattened['contestants'] = leader_data.get('contestants', '')
     
     # Создаем полное имя
     flattened['fullName'] = f"{leader_data.get('lastName', '')} {leader_data.get('firstName', '')}".strip()
@@ -1195,22 +1201,40 @@ def convert_json_to_excel(input_json_path, output_excel_path):
         
         # Обработка данных
         logger.info(LOG_MESSAGES['json_data_processing'])
-        leaders_data = []
+        all_leaders_data = []
         
         if isinstance(json_data, dict):
-            # Ищем данные в структуре LeadersForAdmin
-            for key, value in json_data.items():
-                if isinstance(value, list) and len(value) > 0:
+            # Обрабатываем все турниры в структуре LeadersForAdmin
+            total_tournaments = 0
+            total_leaders = 0
+            
+            for tournament_key, tournament_value in json_data.items():
+                if isinstance(tournament_value, list) and len(tournament_value) > 0:
                     # Проверяем, содержит ли первый элемент данные о турнире
-                    first_item = value[0]
+                    first_item = tournament_value[0]
                     if isinstance(first_item, dict) and 'body' in first_item:
                         body = first_item['body']
                         if 'tournament' in body:
                             tournament = body['tournament']
                             if 'leaders' in tournament:
-                                leaders_data = tournament['leaders']
-                                logger.info(LOG_MESSAGES['json_leaders_found'].format(key=key, count=len(leaders_data)))
-                                break
+                                tournament_leaders = tournament['leaders']
+                                if tournament_leaders:
+                                    # Добавляем информацию о турнире к каждому лидеру
+                                    for leader in tournament_leaders:
+                                        leader_with_tournament = leader.copy()
+                                        leader_with_tournament['tournamentId'] = tournament.get('tournamentId', tournament_key)
+                                        leader_with_tournament['tournamentIndicator'] = tournament.get('tournamentIndicator', '')
+                                        leader_with_tournament['tournamentStatus'] = tournament.get('status', '')
+                                        leader_with_tournament['contestants'] = tournament.get('contestants', '')
+                                        all_leaders_data.append(leader_with_tournament)
+                                    
+                                    total_tournaments += 1
+                                    total_leaders += len(tournament_leaders)
+                                    logger.info(LOG_MESSAGES['json_leaders_found'].format(key=tournament_key, count=len(tournament_leaders)))
+            
+            logger.info(f"Обработано турниров: {total_tournaments}, общее количество лидеров: {total_leaders}")
+            leaders_data = all_leaders_data
+            
         elif isinstance(json_data, list):
             # Прямой список лидеров
             leaders_data = json_data
