@@ -128,7 +128,8 @@ SUBDIRECTORIES = {
 FILE_EXTENSIONS = {
     "CSV": ".csv",    # Ключ: формат CSV файлов
     "TXT": ".txt",    # Ключ: формат текстовых файлов  
-    "JSON": ".json"   # Ключ: формат JSON файлов
+    "JSON": ".json",  # Ключ: формат JSON файлов
+    "EXCEL": ".xlsx"  # Ключ: формат Excel файлов
 }
 ```
 
@@ -200,8 +201,23 @@ ACTIVE_SCRIPTS = [
 
 Измените параметры в конфигурации скрипта:
 ```python
-"json_file": "leadersForAdmin_SIGMA_20250726-192035"  # Имя JSON файла без расширения
+"json_file": "leadersForAdmin_SIGMA_20250726-192035",  # Имя JSON файла без расширения
+"excel_file": "LeadersForAdmin_Excel",  # Имя Excel файла без расширения
+"excel_freeze_row": 1  # Номер строки для закрепления в Excel
 ```
+
+### 5. Система именования Excel файлов
+
+Excel файлы создаются с уникальными именами по шаблону:
+```
+{excel_file}_{SIGMA/ALPHA}_{YYYY-MM-DD-HH-MM-SS}.xlsx
+```
+
+Пример: `LeadersForAdmin_Excel_SIGMA_2025-07-27-00-34-05.xlsx`
+
+- **excel_file** - имя из конфигурации скрипта
+- **SIGMA/ALPHA** - выбранный вариант окружения
+- **YYYY-MM-DD-HH-MM-SS** - временная метка создания файла
 
 ## Конфигурация скриптов
 
@@ -245,6 +261,7 @@ FUNCTION_CONFIGS = {
         "csv_encoding": "utf-8",  # Ключ: кодировка CSV файла
         "input_file": "TOURNAMENT-SCHEDULE (PROM) 2025-07-25 v6",  # Ключ: имя входного файла (без расширения)
         "json_file": "leadersForAdmin_SIGMA_20250726-192035",  # Ключ: имя JSON файла для обработки (без расширения)
+        "excel_file": "LeadersForAdmin_Excel",  # Ключ: имя Excel файла для создания (без расширения)
         "excel_freeze_row": 1  # Ключ: номер строки для закрепления в Excel (1 = заголовок)
     }
 }
@@ -520,4 +537,4 @@ OrionFLASH
 
 ## Версия
 
-2.2.0 - Версия с поддержкой парсинга divisionRatings и настройками Excel 
+2.3.0 - Версия с улучшенной системой именования Excel файлов 

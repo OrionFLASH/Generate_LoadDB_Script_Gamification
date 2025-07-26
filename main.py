@@ -50,7 +50,8 @@ SUBDIRECTORIES = {
 FILE_EXTENSIONS = {
     "CSV": ".csv",    # Ключ: формат CSV файлов
     "TXT": ".txt",    # Ключ: формат текстовых файлов  
-    "JSON": ".json"   # Ключ: формат JSON файлов
+    "JSON": ".json",  # Ключ: формат JSON файлов
+    "EXCEL": ".xlsx"  # Ключ: формат Excel файлов
 }
 
 # Выбор активных скриптов для генерации (глобально)
@@ -232,7 +233,9 @@ FUNCTION_CONFIGS = {
         "csv_delimiter": ";",  # Ключ: разделитель в CSV файле
         "csv_encoding": "utf-8",  # Ключ: кодировка CSV файла
         "input_file": "TOURNAMENT-SCHEDULE (PROM) 2025-07-25 v6",  # Ключ: имя входного файла (без расширения)
-        "json_file": "leadersForAdmin_SIGMA_20250726-192035"  # Ключ: имя JSON файла для обработки (без расширения)
+        "json_file": "leadersForAdmin_SIGMA_20250726-192035",  # Ключ: имя JSON файла для обработки (без расширения)
+        "excel_file": "LeadersForAdmin_Excel",  # Ключ: имя Excel файла для создания (без расширения)
+        "excel_freeze_row": 1  # Ключ: номер строки для закрепления в Excel (1 = заголовок)
     },
     "reward": {  # Ключ: конфигурация для скрипта REWARD (информация о наградах сотрудников)
         "name": "REWARD",  # Ключ: название скрипта для отображения
@@ -1323,9 +1326,27 @@ def convert_specific_json_file(file_name_without_extension, config_key=None):
         json_dir = os.path.join(BASE_DIR, SUBDIRECTORIES["JSON"])
         output_dir = os.path.join(BASE_DIR, SUBDIRECTORIES["OUTPUT"])
         input_json_path = os.path.join(json_dir, f"{file_name_without_extension}.json")
-        output_excel_path = os.path.join(output_dir, f"{file_name_without_extension}.xlsx")
+        
+        # Генерируем уникальное имя Excel файла
+        if config_key and config_key in FUNCTION_CONFIGS:
+            config = FUNCTION_CONFIGS[config_key]
+            excel_file_base = config.get("excel_file", file_name_without_extension)
+            selected_variant = config.get("selected_variant", "sigma")
+            
+            # Создаем временную метку
+            timestamp = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
+            
+            # Формируем имя файла: имя_из_конфига_<SIGMA/ALPHA>_YYYY-MM-DD-HH-MM-SS.xlsx
+            excel_filename = f"{excel_file_base}_{selected_variant.upper()}_{timestamp}{FILE_EXTENSIONS['EXCEL']}"
+        else:
+            # Fallback: используем имя JSON файла с временной меткой
+            timestamp = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
+            excel_filename = f"{file_name_without_extension}_{timestamp}{FILE_EXTENSIONS['EXCEL']}"
+        
+        output_excel_path = os.path.join(output_dir, excel_filename)
         
         logger.info(LOG_MESSAGES['json_file_processing'].format(file_name=file_name_without_extension))
+        logger.info(f"Создаем Excel файл: {excel_filename}")
         
         # Конвертируем файл
         if convert_json_to_excel(input_json_path, output_excel_path, config_key):
