@@ -238,7 +238,12 @@ LOG_MESSAGES = {
     "json_file_processing_info": "Обработка JSON файла: {json_file}",  # Ключ: обработка JSON файла
     "no_json_file_warning": "Для скрипта {script_name} не указан json_file",  # Ключ: нет JSON файла
     "json_processing_skipped": "Пропуск обработки JSON для {script_name} (режим: {operations})",  # Ключ: пропуск обработки JSON
-    "excel_creation_error": "Ошибка при создании Excel файла: {error}",  # Ключ: ошибка создания Excel
+    "numeric_conversion_error": "Ошибка преобразования в числовой формат колонки {column}, значение '{value}': {error}",  # Ключ: ошибка числового преобразования
+    "date_conversion_error": "Ошибка преобразования в дату колонки {column}, значение '{value}': {error}",  # Ключ: ошибка преобразования даты
+    "column_conversion_start": "Начинаем преобразование колонки {column} в тип {type}",  # Ключ: начало преобразования колонки
+    "column_conversion_success": "Успешно преобразована колонка {column} в тип {type} ({action})",  # Ключ: успешное преобразование колонки
+    "column_conversion_failed": "Ошибка преобразования колонки {column} в тип {type}: {error}",  # Ключ: ошибка преобразования колонки
+    "columns_filtered": "{action} {count} колонок: {columns}",  # Ключ: фильтрация колонок
     "no_active_scripts": "Нет активных скриптов для обработки. Настройте ACTIVE_SCRIPTS.",  # Ключ: нет активных скриптов
     "summary_output": "Итоговая статистика работы программы:\n{summary}",  # Ключ: итоговая статистика
     "reward_profiles_leaders_found": "Найдены лидеры для кода награды {code}: {count} (структура: {structure})",  # Ключ: найдены лидеры наград
@@ -1755,6 +1760,138 @@ def load_json_data(input_json_path):
         logger.error(LOG_MESSAGES['json_load_error'].format(file_path=input_json_path, error=e))
         return None
 
+@measure_time
+def convert_to_integer(value, column_name=None):
+    """
+    Преобразование значения в целое число с очисткой от лишних символов
+    
+    Args:
+        value: Значение для преобразования
+        column_name (str, optional): Имя колонки для логирования
+        
+    Returns:
+        int: Преобразованное целое число или 0 при ошибке
+    """
+    import re
+    
+    try:
+        if pd.isna(value) or value == '':
+            return 0
+        
+        # Преобразуем в строку и очищаем от лишних символов
+        value_str = str(value).strip()
+        
+        # Удаляем все символы кроме цифр, точки, запятой и минуса
+        cleaned_value = re.sub(r'[^\d.,\-]', '', value_str)
+        
+        # Заменяем запятую на точку для корректного парсинга
+        cleaned_value = cleaned_value.replace(',', '.')
+        
+        # Удаляем лишние точки (оставляем только первую)
+        if cleaned_value.count('.') > 1:
+            parts = cleaned_value.split('.')
+            cleaned_value = parts[0] + '.' + ''.join(parts[1:])
+        
+        # Преобразуем в число и округляем до целого
+        numeric_value = float(cleaned_value)
+        return int(numeric_value)
+        
+    except Exception as e:
+        context = f" для колонки {column_name}" if column_name else ""
+        logger.warning(LOG_MESSAGES['numeric_conversion_error'].format(
+            column=column_name or 'unknown', 
+            value=str(value), 
+            error=str(e)
+        ))
+        return 0
+
+@measure_time
+def convert_to_float(value, decimal_places=2, column_name=None):
+    """
+    Преобразование значения в дробное число с очисткой от лишних символов
+    
+    Args:
+        value: Значение для преобразования
+        decimal_places (int): Количество знаков после запятой
+        column_name (str, optional): Имя колонки для логирования
+        
+    Returns:
+        float: Преобразованное дробное число или 0.0 при ошибке
+    """
+    import re
+    
+    try:
+        if pd.isna(value) or value == '':
+            return 0.0
+        
+        # Преобразуем в строку и очищаем от лишних символов
+        value_str = str(value).strip()
+        
+        # Удаляем все символы кроме цифр, точки, запятой и минуса
+        cleaned_value = re.sub(r'[^\d.,\-]', '', value_str)
+        
+        # Заменяем запятую на точку для корректного парсинга
+        cleaned_value = cleaned_value.replace(',', '.')
+        
+        # Удаляем лишние точки (оставляем только первую)
+        if cleaned_value.count('.') > 1:
+            parts = cleaned_value.split('.')
+            cleaned_value = parts[0] + '.' + ''.join(parts[1:])
+        
+        # Преобразуем в число и округляем
+        numeric_value = float(cleaned_value)
+        return round(numeric_value, decimal_places)
+        
+    except Exception as e:
+        context = f" для колонки {column_name}" if column_name else ""
+        logger.warning(LOG_MESSAGES['numeric_conversion_error'].format(
+            column=column_name or 'unknown', 
+            value=str(value), 
+            error=str(e)
+        ))
+        return 0.0
+
+@measure_time
+def convert_to_date(value, input_format='DD.MM.YY', column_name=None):
+    """
+    Преобразование значения в дату с очисткой от лишних символов
+    
+    Args:
+        value: Значение для преобразования
+        input_format (str): Входной формат даты
+        column_name (str, optional): Имя колонки для логирования
+        
+    Returns:
+        datetime: Преобразованная дата или исходное значение при ошибке
+    """
+    from datetime import datetime
+    import re
+    
+    try:
+        if pd.isna(value) or value == '':
+            return ''
+        
+        # Преобразуем в строку и очищаем от лишних символов
+        value_str = str(value).strip()
+        
+        # Удаляем лишние пробелы, табы и другие символы
+        cleaned_value = re.sub(r'\s+', '', value_str)
+        
+        # Конвертируем формат в Python datetime format
+        python_input_format = input_format.replace('DD', '%d').replace('MM', '%m').replace('YY', '%y').replace('YYYY', '%Y')
+        
+        # Парсим дату
+        parsed_date = datetime.strptime(cleaned_value, python_input_format)
+        return parsed_date
+        
+    except Exception as e:
+        logger.warning(LOG_MESSAGES['date_conversion_error'].format(
+            column=column_name or 'unknown', 
+            value=str(value), 
+            error=str(e)
+        ))
+        return str(value)  # Возвращаем исходное значение если не удалось преобразовать
+
 def apply_column_settings(df, column_settings):
     """
     Применение настроек колонок к DataFrame
@@ -1767,8 +1904,6 @@ def apply_column_settings(df, column_settings):
         pd.DataFrame: Обработанный DataFrame
     """
     import pandas as pd
-    from datetime import datetime
-    import re
     
     df_result = df.copy()
     
@@ -1782,58 +1917,79 @@ def apply_column_settings(df, column_settings):
             replace_original = settings.get('replace_original', True)
             
             try:
+                logger.info(LOG_MESSAGES['column_conversion_start'].format(
+                    column=column, 
+                    type=conversion_type
+                ))
+                
                 if conversion_type == 'integer':
                     # Преобразуем в целое число
-                    new_values = pd.to_numeric(df_result[column], errors='coerce').fillna(0).astype(int)
+                    new_values = df_result[column].apply(lambda x: convert_to_integer(x, column))
                 elif conversion_type == 'float':
                     # Преобразуем в дробное число
                     decimal_places = settings.get('decimal_places', 2)
-                    new_values = pd.to_numeric(df_result[column], errors='coerce').fillna(0.0)
-                    new_values = new_values.round(decimal_places)
+                    new_values = df_result[column].apply(lambda x: convert_to_float(x, decimal_places, column))
                 
                 if replace_original:
                     df_result[column] = new_values
+                    logger.info(LOG_MESSAGES['column_conversion_success'].format(
+                        column=column, 
+                        type=conversion_type, 
+                        action="заменено"
+                    ))
                 else:
                     new_column_name = f"{column}_numeric"
                     df_result[new_column_name] = new_values
+                    logger.info(LOG_MESSAGES['column_conversion_success'].format(
+                        column=column, 
+                        type=conversion_type, 
+                        action=f"создано новое поле {new_column_name}"
+                    ))
                     
             except Exception as e:
-                logger.warning(f"Ошибка преобразования колонки {column} в числовой формат: {e}")
+                logger.error(LOG_MESSAGES['column_conversion_failed'].format(
+                    column=column, 
+                    type=conversion_type, 
+                    error=str(e)
+                ))
     
     # Преобразования дат
     date_conversions = column_settings.get('date_conversions', {})
     for column, settings in date_conversions.items():
         if column in df_result.columns:
             input_format = settings.get('input_format', 'DD.MM.YY')
-            output_format = settings.get('output_format', 'YYYY-MM-DD')
             replace_original = settings.get('replace_original', True)
             
             try:
-                def convert_date(date_str):
-                    if pd.isna(date_str) or date_str == '':
-                        return ''
-                    
-                    # Конвертируем формат в Python datetime format
-                    python_input_format = input_format.replace('DD', '%d').replace('MM', '%m').replace('YY', '%y').replace('YYYY', '%Y')
-                    
-                    try:
-                        # Парсим дату
-                        parsed_date = datetime.strptime(str(date_str), python_input_format)
-                        # Возвращаем объект datetime для правильного форматирования в Excel
-                        return parsed_date
-                    except:
-                        return str(date_str)  # Возвращаем исходное значение если не удалось преобразовать
+                logger.info(LOG_MESSAGES['column_conversion_start'].format(
+                    column=column, 
+                    type="date"
+                ))
                 
-                new_values = df_result[column].apply(convert_date)
+                new_values = df_result[column].apply(lambda x: convert_to_date(x, input_format, column))
                 
                 if replace_original:
                     df_result[column] = new_values
+                    logger.info(LOG_MESSAGES['column_conversion_success'].format(
+                        column=column, 
+                        type="date", 
+                        action="заменено"
+                    ))
                 else:
                     new_column_name = f"{column}_formatted"
                     df_result[new_column_name] = new_values
+                    logger.info(LOG_MESSAGES['column_conversion_success'].format(
+                        column=column, 
+                        type="date", 
+                        action=f"создано новое поле {new_column_name}"
+                    ))
                     
             except Exception as e:
-                logger.warning(f"Ошибка преобразования колонки {column} в формат даты: {e}")
+                logger.error(LOG_MESSAGES['column_conversion_failed'].format(
+                    column=column, 
+                    type="date", 
+                    error=str(e)
+                ))
     
     # 2. Фильтрация колонок
     columns_to_keep = column_settings.get('columns_to_keep', [])
@@ -1844,11 +2000,21 @@ def apply_column_settings(df, column_settings):
         # Оставляем только указанные колонки (если они существуют)
         existing_columns_to_keep = [col for col in columns_to_keep if col in df_result.columns]
         df_result = df_result[existing_columns_to_keep]
+        logger.info(LOG_MESSAGES['columns_filtered'].format(
+            action="оставлены", 
+            count=len(existing_columns_to_keep), 
+            columns=existing_columns_to_keep
+        ))
     
     # Удаляем ненужные колонки
     if columns_to_remove:
         columns_to_drop = [col for col in columns_to_remove if col in df_result.columns]
         df_result = df_result.drop(columns=columns_to_drop)
+        logger.info(LOG_MESSAGES['columns_filtered'].format(
+            action="удалены", 
+            count=len(columns_to_drop), 
+            columns=columns_to_drop
+        ))
     
     return df_result
 
