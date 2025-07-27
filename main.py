@@ -217,6 +217,9 @@ LOG_MESSAGES = {
     "tournaments_processed": "Обработано турниров: {tournaments}, общее количество лидеров: {leaders}",  # Ключ: турниры обработаны
     "no_data_warning": "Нет данных для обработки",  # Ключ: нет данных
     "json_leaders_conversion_error": "Ошибка при конвертации JSON лидеров в Excel: {error}",  # Ключ: ошибка конвертации лидеров
+    "csv_missing_delimiter": "Ошибка: не указан разделитель CSV (csv_delimiter)",  # Ключ: отсутствует разделитель CSV
+    "csv_missing_encoding": "Ошибка: не указана кодировка CSV (csv_encoding)",  # Ключ: отсутствует кодировка CSV
+    "csv_missing_column": "Ошибка: не указан столбец CSV (csv_column)",  # Ключ: отсутствует столбец CSV
     "profile_extraction_error": "Ошибка при извлечении профилей из данных: {error}",  # Ключ: ошибка извлечения профилей
     "reward_profiles_found": "Найдено профилей для кода награды {code}: {count} (структура: {structure})",  # Ключ: найдены профили наград
     "reward_profiles_found_old": "Найдено профилей для кода награды {code}: {count} (старая структура)",  # Ключ: найдены профили наград (старая структура)
@@ -740,12 +743,23 @@ def load_data_from_file(filepath, file_format="TXT", csv_delimiter=None, csv_enc
     """
     global processed_actions_count
     
-    # Использование переданных параметров или значений по умолчанию
-    delimiter = csv_delimiter or ";"
-    encoding = csv_encoding or "utf-8"
-    column = csv_column or "data_column"
-    
     logger.debug(LOG_MESSAGES['file_loading'].format(file_path=filepath, format=file_format))
+    
+    # Проверка обязательных параметров для CSV
+    if file_format.upper() == "CSV":
+        if not csv_delimiter:
+            logger.error(LOG_MESSAGES['csv_missing_delimiter'])
+            return []
+        if not csv_encoding:
+            logger.error(LOG_MESSAGES['csv_missing_encoding'])
+            return []
+        if not csv_column:
+            logger.error(LOG_MESSAGES['csv_missing_column'])
+            return []
+        
+        delimiter = csv_delimiter
+        encoding = csv_encoding
+        column = csv_column
     
     # Проверка существования файла
     if not os.path.exists(filepath):
@@ -806,8 +820,8 @@ def get_data():
     """
     # Эта функция теперь используется только для тестовых данных
     # Для каждого скрипта данные загружаются индивидуально в соответствующих функциях
-    logger.info(LOG_MESSAGES['using_test_data'].format(count=len(TEST_DATA_LIST)))
-    return TEST_DATA_LIST.copy()
+    logger.warning("Функция get_data() устарела. Используйте индивидуальную загрузку данных для каждого скрипта.")
+    return []
 
 @measure_time
 def save_script_to_file(script_content, script_name, config_key=None, variant=None):
@@ -1332,8 +1346,8 @@ def load_script_data(config_key, data_list=None):
                 config["csv_column"]
             )
         else:
-            # Использование тестовых данных
-            data_list = TEST_DATA_LIST.copy()
+            # Использование тестовых данных из конфигурации
+            data_list = config.get('test_data', []).copy()
     
     # Получение всех вариантов конфигурации
     variants_configs = config["variants"]
