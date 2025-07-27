@@ -290,6 +290,14 @@ FUNCTION_CONFIGS = {
                 }
             }
         },
+        "timeout": 30000,  # Ключ: таймаут запроса в миллисекундах (общий для всех вариантов)
+        "retry_count": 3,  # Ключ: количество попыток при ошибке (общий для всех вариантов)
+        "delay_between_requests": 5,  # Ключ: задержка между запросами в секундах (общий для всех вариантов)
+        "processing_options": {  # Ключ: опции обработки данных
+            "remove_photo_data": True,  # Ключ: удалять ли поля photoData из результатов
+            "include_division_ratings": True,  # Ключ: включать ли рейтинги подразделений
+            "include_tournament_info": True  # Ключ: включать ли информацию о турнирах
+        },
         "selected_variant": "sigma",  # Ключ: выбранный вариант (sigma/alpha)
         "data_source": "external_file",  # Ключ: источник данных (file/variable/external_file)
         "input_format": "CSV",  # Ключ: формат входного файла
@@ -339,10 +347,7 @@ FUNCTION_CONFIGS = {
                 "params": {
                     "api_path": "/bo/rmkib.gamification/api/v1/badges/",  # Ключ: путь к API
                     "service": "profiles"  # Ключ: название сервиса
-                },
-                "timeout": 30000,  # Ключ: таймаут запроса в миллисекундах
-                "retry_count": 3,  # Ключ: количество попыток при ошибке
-                "delay_between_requests": 5  # Ключ: задержка между запросами в миллисекундах
+                }
             },
             "alpha": {  # Ключ: вариант ALPHA (тестовое окружение)
                 "name": "Reward (ALPHA)",  # Ключ: название варианта
@@ -351,12 +356,12 @@ FUNCTION_CONFIGS = {
                 "params": {
                     "api_path": "/bo/rmkib.gamification/api/v1/badges/",  # Ключ: путь к API
                     "service": "profiles"  # Ключ: название сервиса
-                },
-                "timeout": 30000,  # Ключ: таймаут запроса в миллисекундах
-                "retry_count": 3,  # Ключ: количество попыток при ошибке
-                "delay_between_requests": 10  # Ключ: задержка между запросами в миллисекундах
+                }
             }
         },
+        "timeout": 30000,  # Ключ: таймаут запроса в миллисекундах (общий для всех вариантов)
+        "retry_count": 3,  # Ключ: количество попыток при ошибке (общий для всех вариантов)
+        "delay_between_requests": 5,  # Ключ: задержка между запросами в секундах (общий для всех вариантов)
         "selected_variant": "sigma",  # Ключ: выбранный вариант (sigma/alpha)
         "data_source": "external_file",  # Ключ: источник данных (file/variable/external_file)
         "input_format": "CSV",  # Ключ: формат входного файла
@@ -366,10 +371,11 @@ FUNCTION_CONFIGS = {
         "input_file": "REWARD (PROM) 2025-07-24 v1",  # Ключ: имя входного файла (без расширения)
         "processing_options": {  # Ключ: опции обработки данных
             "include_photo_data": False,  # Ключ: включать ли данные фотографий
+            "remove_photo_data": True,  # Ключ: удалять ли поля photoData из результатов
             "include_division_ratings": True,  # Ключ: включать ли рейтинги подразделений
             "include_badge_info": True,  # Ключ: включать ли информацию о наградах
             "max_profiles_per_request": 1000,  # Ключ: максимальное количество профилей на запрос
-                        "skip_empty_profiles": True  # Ключ: пропускать ли пустые профили
+            "skip_empty_profiles": True  # Ключ: пропускать ли пустые профили
         },
         "reward_profiles": {  # Ключ: конфигурация для обработки профилей наград (JSON → Excel)
             "name": "Reward Profiles",  # Ключ: название скрипта для отображения
@@ -1387,6 +1393,15 @@ def generate_leaders_for_admin_script(data_list=None):
     script_logger.debug(LOG_MESSAGES['domain_info'].format(domain=variant_config['domain']))
     script_logger.debug(LOG_MESSAGES['api_path_info'].format(api_path=variant_config['params']['api_path']))
     
+    # Получаем настройки из конфигурации
+    delay = config.get('delay_between_requests', 5)
+    max_retries = config.get('retry_count', 3)
+    timeout = config.get('timeout', 30000)
+    remove_photo_data = config.get('processing_options', {}).get('remove_photo_data', True)
+    
+    script_logger.debug(LOG_MESSAGES['request_params'].format(delay=delay, max_retries=max_retries, timeout=timeout))
+    script_logger.debug(f"Удаление photoData: {remove_photo_data}")
+    
     # Генерация JavaScript скрипта для LeadersForAdmin
     script = f"""// ==UserScript==
 // Скрипт для DevTools. Выгрузка лидеров для всех Tournament ID (одна страница на турнир)
@@ -1460,15 +1475,20 @@ def generate_leaders_for_admin_script(data_list=None):
       console.log(`✅ [${{i+1}}/${{ids.length}}] Код ${{tid}}: успешно, участников: ${{leadersCount}}`);
       results[tid] = [data];
       processed++;
-      await new Promise(r => setTimeout(r, 5));
+      await new Promise(r => setTimeout(r, {delay} * 1000));
     }} catch (e) {{
       console.error(`❌ [${{i+1}}/${{ids.length}}] Код ${{tid}}: Ошибка запроса:`, e);
       errors++;
     }}
   }}
 
-  console.log('🧹 Удаляем все поля photoData');
-  removePhotoData(results);
+  // Удаляем photoData только если это включено в настройках
+  if ({str(remove_photo_data).lower()}) {{
+    console.log('🧹 Удаляем все поля photoData');
+    removePhotoData(results);
+  }} else {{
+    console.log('🧹 Удаление photoData отключено в настройках');
+  }}
 
   console.log('💾 Сохраняем файл ...');
   const ts = getTimestamp();
@@ -1514,9 +1534,12 @@ def generate_reward_script(data_list=None):
     script_logger.debug(LOG_MESSAGES['domain_info'].format(domain=variant_config['domain']))
     script_logger.debug(LOG_MESSAGES['api_path_info'].format(api_path=variant_config['params']['api_path']))
     
-    delay = variant_config.get('delay_between_requests', 5)
-    max_retries = variant_config.get('retry_count', 3)
-    timeout = variant_config.get('timeout', 30000)
+    # Получаем настройки из конфигурации
+    delay = config.get('delay_between_requests', 5)
+    max_retries = config.get('retry_count', 3)
+    timeout = config.get('timeout', 30000)
+    remove_photo_data = config.get('processing_options', {}).get('remove_photo_data', True)
+    
     domain = variant_config['domain']
     api_path = variant_config['params']['api_path']
     service = variant_config['params']['service']
@@ -1524,6 +1547,7 @@ def generate_reward_script(data_list=None):
     
     script_logger.debug(LOG_MESSAGES['request_params'].format(delay=delay, max_retries=max_retries, timeout=timeout))
     script_logger.debug(LOG_MESSAGES['base_url_info'].format(base_url=base_url))
+    script_logger.debug(f"Удаление photoData: {remove_photo_data}")
     
     ids_string = ', '.join([f'"{item}"' for item in data_list])
     script_logger.debug(LOG_MESSAGES['ids_generated'].format(count=len(data_list)))
@@ -1669,8 +1693,13 @@ def generate_reward_script(data_list=None):
     }}
   }}
 
-  console.log('\\n📦 Удаляем photoData...');
-  removePhotoData(results);
+  // Удаляем photoData только если это включено в настройках
+  if ({str(remove_photo_data).lower()}) {{
+    console.log('\\n📦 Удаляем photoData...');
+    removePhotoData(results);
+  }} else {{
+    console.log('\\n📦 Удаление photoData отключено в настройках');
+  }}
   const ts = getTimestamp();
   const blob = new Blob([JSON.stringify(results, null, 2)], {{ type: 'application/json' }});
   const a = document.createElement('a');
