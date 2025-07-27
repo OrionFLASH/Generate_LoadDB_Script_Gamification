@@ -126,7 +126,7 @@ LOG_MESSAGES = {
     
     # Сообщения о выполнении функций
     "function_start": "[START] {func} {params}",  # Ключ: начало выполнения функции
-    "function_completed": "[END] {func} {params} (время: {time:.4f}s)",  # Ключ: завершение функции
+    "function_completed": "[END] {func} {params} (время: {time}s)",  # Ключ: завершение функции
     "function_error": "[ERROR] {func} {params} — {error}",  # Ключ: ошибка в функции
     
     # Сообщения о данных
@@ -579,9 +579,9 @@ def measure_time(func):
             # Логирование успешного завершения
             # Исключаем вывод содержимого скриптов
             if func.__name__ in ['generate_leaders_for_admin_script', 'generate_reward_script']:
-                logger.debug(LOG_MESSAGES['function_completed'].format(func=func.__name__, params="args=(), kwargs=[]", time=execution_time))
+                logger.debug(LOG_MESSAGES['function_completed'].format(func=func.__name__, params="args=(), kwargs=[]", time=f"{execution_time:.4f}"))
             else:
-                logger.debug(LOG_MESSAGES['function_completed'].format(func=func.__name__, params=params_str, time=execution_time))
+                logger.debug(LOG_MESSAGES['function_completed'].format(func=func.__name__, params=params_str, time=f"{execution_time:.4f}"))
             return result
             
         except Exception as e:
