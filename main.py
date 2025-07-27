@@ -33,7 +33,7 @@ from openpyxl.formatting.rule import ColorScaleRule, CellIsRule
 BASE_DIR = r"/Users/orionflash/Desktop/MyProject/Gen_Load_Game_Script/WORK"
 
 # Настройки логирования
-LOG_LEVEL = "DEBUG"  # Уровень детализации логов: "INFO" - основная информация, "DEBUG" - подробная отладочная информация
+LOG_LEVEL = "INFO"  # Уровень детализации логов: "INFO" - основная информация, "DEBUG" - подробная отладочная информация
 LOG_FILENAME_BASE = "LOG_2"  # Базовое имя файла лога (к нему добавляется дата и время)
 
 # Имена подпапок (глобально)
@@ -399,7 +399,7 @@ FUNCTION_CONFIGS = {
                     "receivingDate": {
                         "input_format": "DD.MM.YY",  # Ключ: входной формат даты
                         "output_format": "YYYY-MM-DD",  # Ключ: выходной формат даты
-                        "replace_original": False  # Ключ: заменить исходное поле (True) или создать новое (False)
+                        "replace_original": True  # Ключ: заменить исходное поле (True) или создать новое (False)
                     }
                 }
             }
