@@ -2528,36 +2528,45 @@ def convert_reward_profiles_json_to_excel(input_json_path, output_excel_path, co
             total_leaders = 0
             
             for reward_code, reward_value in json_data.items():
-                # Новая структура: массив с body.badge.leaders
+                # Новая структура: массив с body.badge.leaders - ОБРАБАТЫВАЕМ ВСЕ ЭЛЕМЕНТЫ
                 if isinstance(reward_value, list) and reward_value:
-                    first_item = reward_value[0]
-                    if isinstance(first_item, dict) and 'body' in first_item:
-                        body = first_item['body']
-                        if isinstance(body, dict) and 'badge' in body:
-                            badge = body['badge']
-                            
-                            # Получаем лидеров из body.badge.leaders
-                            leaders = badge.get('leaders', [])
-                            contestants = badge.get('contestants', '')
-                            badge_id = badge.get('badgeId', reward_code)
-                            
-                            if leaders:
-                                # Добавляем информацию о коде награды к каждому лидеру
-                                for leader in leaders:
-                                    if isinstance(leader, dict):
-                                        leader_with_reward = flatten_reward_leader_data(leader, reward_code)
-                                        
-                                        # Добавляем информацию о награде
-                                        leader_with_reward['badgeId'] = badge_id
-                                        leader_with_reward['contestants'] = contestants
-                                        leader_with_reward['profilesCount'] = len(leaders)
-                                        
-                                        all_leaders_data.append(leader_with_reward)
+                    logger.debug(f"Обрабатываем массив из {len(reward_value)} элементов для {reward_code}")
+                    
+                    # Обрабатываем все элементы в массиве
+                    for item_index, item in enumerate(reward_value):
+                        if isinstance(item, dict) and 'body' in item:
+                            body = item['body']
+                            if isinstance(body, dict) and 'badge' in body:
+                                badge = body['badge']
                                 
-                                total_rewards += 1
-                                total_leaders += len(leaders)
-                                logger.debug(LOG_MESSAGES['json_reward_found'].format(key=reward_code, count=len(leaders)))
-                                logger.info(LOG_MESSAGES['reward_profiles_leaders_found'].format(code=reward_code, count=len(leaders), structure="body.badge.leaders"))
+                                # Получаем лидеров из body.badge.leaders
+                                leaders = badge.get('leaders', [])
+                                contestants = badge.get('contestants', '')
+                                badge_id = badge.get('badgeId', reward_code)
+                                
+                                logger.debug(f"Элемент {item_index + 1}/{len(reward_value)} для {reward_code}: {len(leaders)} лидеров")
+                                
+                                if leaders:
+                                    # Добавляем информацию о коде награды к каждому лидеру
+                                    for leader in leaders:
+                                        if isinstance(leader, dict):
+                                            leader_with_reward = flatten_reward_leader_data(leader, reward_code)
+                                            
+                                            # Добавляем информацию о награде
+                                            leader_with_reward['badgeId'] = badge_id
+                                            leader_with_reward['contestants'] = contestants
+                                            leader_with_reward['profilesCount'] = len(leaders)
+                                            leader_with_reward['itemIndex'] = item_index + 1  # Добавляем индекс элемента
+                                            
+                                            all_leaders_data.append(leader_with_reward)
+                                    
+                                    total_leaders += len(leaders)
+                                    logger.debug(f"Элемент {item_index + 1}: добавлено {len(leaders)} лидеров")
+                    
+                    total_rewards += 1
+                    total_leaders_for_reward = sum(len(item.get('body', {}).get('badge', {}).get('leaders', [])) for item in reward_value if isinstance(item, dict) and 'body' in item)
+                    logger.debug(LOG_MESSAGES['json_reward_found'].format(key=reward_code, count=total_leaders_for_reward))
+                    logger.info(LOG_MESSAGES['reward_profiles_leaders_found'].format(code=reward_code, count=total_leaders_for_reward, structure=f"body.badge.leaders (все элементы: {len(reward_value)})"))
                 
                 # Старая структура: объект с badgeInfo.leaders
                 elif isinstance(reward_value, dict):
