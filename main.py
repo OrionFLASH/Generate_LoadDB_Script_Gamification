@@ -17,8 +17,8 @@ import json
 import pandas as pd
 from functools import wraps
 
-# Импорт библиотеки для работы с буфером обмена
-import pyperclip
+# Импорт библиотеки для работы с буфером обмена (удалено - не используется)
+# import pyperclip
 
 # Импорт библиотек для работы с Excel
 from openpyxl.styles import PatternFill, Font, Alignment
@@ -151,8 +151,9 @@ LOG_MESSAGES = {
     "using_test_data": "Использование тестовых данных: {count} элементов",  # Ключ: использование тестовых данных
     
     # Сообщения о буфере обмена
-    "clipboard_copied": "Текст скопирован в буфер обмена",  # Ключ: успешное копирование в буфер
-    "clipboard_error": "Ошибка при копировании в буфер: {error}",  # Ключ: ошибка копирования в буфер
+    # Сообщения для буфера обмена удалены - функциональность не используется
+    # "clipboard_copied": "Текст скопирован в буфер обмена",  # Ключ: успешное копирование в буфер
+    # "clipboard_error": "Ошибка при копировании в буфер: {error}",  # Ключ: ошибка копирования в буфер
     
     # Сообщения о генерации скриптов
     "script_generation": "Генерация скрипта: {script_name}",  # Ключ: начало генерации скрипта
@@ -853,26 +854,27 @@ def save_script_to_file(script_content, script_name, config_key=None):
         logger.error(LOG_MESSAGES['script_save_error'].format(error=str(e)))
         return None
 
-@measure_time
-def copy_to_clipboard(text):
-    """
-    Копирование текста в буфер обмена
-    
-    Использует библиотеку pyperclip для копирования текста в системный буфер обмена.
-    
-    Args:
-        text (str): Текст для копирования в буфер обмена
-        
-    Returns:
-        bool: True если копирование успешно, False в случае ошибки
-    """
-    try:
-        pyperclip.copy(text)
-        logger.debug(LOG_MESSAGES['clipboard_copied'])
-        return True
-    except Exception as e:
-        logger.error(LOG_MESSAGES['clipboard_error'].format(error=str(e)))
-        return False
+# Функция копирования в буфер обмена удалена - не используется
+# @measure_time
+# def copy_to_clipboard(text):
+#     """
+#     Копирование текста в буфер обмена
+#     
+#     Использует библиотеку pyperclip для копирования текста в системный буфер обмена.
+#     
+#     Args:
+#         text (str): Текст для копирования в буфер обмена
+#         
+#     Returns:
+#         bool: True если копирование успешно, False в случае ошибки
+#     """
+#     try:
+#         pyperclip.copy(text)
+#         logger.debug(LOG_MESSAGES['clipboard_copied'])
+#         return True
+#     except Exception as e:
+#         logger.error(LOG_MESSAGES['clipboard_error'].format(error=str(e)))
+#         return False
 
 # =============================================================================
 # ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ДЛЯ JSON И EXCEL
