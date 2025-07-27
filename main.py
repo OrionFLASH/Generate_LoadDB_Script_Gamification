@@ -58,7 +58,7 @@ FILE_EXTENSIONS = {
 ACTIVE_SCRIPTS = [
     "leaders_for_admin",  # Скрипт для получения информации по участникам турнира (LeadersForAdmin)
     "reward",  # Скрипт для выгрузки профилей участников по кодам наград (Reward)
-    "reward_profiles",  # Обработка профилей наград из JSON в Excel
+    # "reward_profiles",  # Обработка профилей наград из JSON в Excel (теперь внутри reward)
     # "reward",             # Скрипт для получения информации о наградах сотрудников
     # "profile",            # Скрипт для получения профилей сотрудников
     # "news_details",       # Скрипт для получения детальной карточки новости
@@ -281,9 +281,15 @@ FUNCTION_CONFIGS = {
         "csv_delimiter": ";",  # Ключ: разделитель в CSV файле
         "csv_encoding": "utf-8",  # Ключ: кодировка CSV файла
         "input_file": "TOURNAMENT-SCHEDULE (PROM) 2025-07-25 v6",  # Ключ: имя входного файла (без расширения)
-        "json_file": "leadersForAdmin_SIGMA_20250726-192035",  # Ключ: имя JSON файла для обработки (без расширения)
-        "excel_file": "LeadersForAdmin",  # Ключ: имя Excel файла для создания (без расширения)
-        "excel_freeze_cell": "B2"  # Ключ: ячейка для закрепления в Excel (B2 = первая строка и первая колонка)
+        "leaders_processing": {  # Ключ: конфигурация для обработки лидеров турниров (JSON → Excel)
+            "name": "Leaders Processing",  # Ключ: название скрипта для отображения
+            "description": "Обработка лидеров турниров из JSON в Excel",  # Ключ: описание назначения скрипта
+            "active_operations": "json_only",  # Ключ: активные операции ("scripts_only", "json_only", "both")
+            "excel_freeze_row": 1,  # Ключ: номер строки для закрепления в Excel (1 = заголовок)
+            "json_file": "leadersForAdmin_SIGMA_20250726-192035",  # Ключ: имя JSON файла для обработки (без расширения)
+            "excel_file": "LeadersForAdmin",  # Ключ: имя Excel файла для создания (без расширения)
+            "excel_freeze_cell": "B2"  # Ключ: ячейка для закрепления в Excel (B2 = первая строка и первая колонка)
+        }
     },
     "reward": {  # Ключ: конфигурация для скрипта REWARD (выгрузка профилей участников по кодам наград)
         "name": "Reward",  # Ключ: название скрипта для отображения
@@ -327,17 +333,17 @@ FUNCTION_CONFIGS = {
             "include_division_ratings": True,  # Ключ: включать ли рейтинги подразделений
             "include_badge_info": True,  # Ключ: включать ли информацию о наградах
             "max_profiles_per_request": 1000,  # Ключ: максимальное количество профилей на запрос
-            "skip_empty_profiles": True  # Ключ: пропускать ли пустые профили
+                        "skip_empty_profiles": True  # Ключ: пропускать ли пустые профили
+        },
+        "reward_profiles": {  # Ключ: конфигурация для обработки профилей наград (JSON → Excel)
+            "name": "Reward Profiles",  # Ключ: название скрипта для отображения
+            "description": "Обработка профилей наград из JSON в Excel",  # Ключ: описание назначения скрипта
+            "active_operations": "json_only",  # Ключ: активные операции ("scripts_only", "json_only", "both")
+            "excel_freeze_row": 1,  # Ключ: номер строки для закрепления в Excel (1 = заголовок)
+            "json_file": "profiles_SIGMA_20250727-032838",  # Ключ: имя JSON файла для обработки (без расширения)
+            "excel_file": "RewardProfiles",  # Ключ: имя Excel файла для создания (без расширения)
+            "excel_freeze_cell": "B2"  # Ключ: ячейка для закрепления в Excel (B2 = первая строка и первая колонка)
         }
-    },
-    "reward_profiles": {  # Ключ: конфигурация для обработки профилей наград (JSON → Excel)
-        "name": "Reward Profiles",  # Ключ: название скрипта для отображения
-        "description": "Обработка профилей наград из JSON в Excel",  # Ключ: описание назначения скрипта
-        "active_operations": "json_only",  # Ключ: активные операции ("scripts_only", "json_only", "both")
-        "excel_freeze_row": 1,  # Ключ: номер строки для закрепления в Excel (1 = заголовок)
-        "json_file": "profiles_SIGMA_20250727-032838",  # Ключ: имя JSON файла для обработки (без расширения)
-        "excel_file": "RewardProfiles",  # Ключ: имя Excel файла для создания (без расширения)
-        "excel_freeze_cell": "B2"  # Ключ: ячейка для закрепления в Excel (B2 = первая строка и первая колонка)
     },
     "profile": {  # Ключ: конфигурация для скрипта PROFILE (профили сотрудников)
         "name": "PROFILE",  # Ключ: название скрипта для отображения
@@ -1694,7 +1700,13 @@ def save_excel_file(df, output_excel_path, config_key=None):
             # Получаем настройки закрепления из конфигурации
             freeze_cell = "B2"  # По умолчанию закрепляем первую строку и первую колонку
             if config_key and config_key in FUNCTION_CONFIGS:
-                freeze_cell = FUNCTION_CONFIGS[config_key].get('excel_freeze_cell', "B2")
+                # Проверяем, есть ли вложенные конфигурации
+                if config_key == "reward" and "reward_profiles" in FUNCTION_CONFIGS[config_key]:
+                    freeze_cell = FUNCTION_CONFIGS[config_key]["reward_profiles"].get('excel_freeze_cell', "B2")
+                elif config_key == "leaders_for_admin" and "leaders_processing" in FUNCTION_CONFIGS[config_key]:
+                    freeze_cell = FUNCTION_CONFIGS[config_key]["leaders_processing"].get('excel_freeze_cell', "B2")
+                else:
+                    freeze_cell = FUNCTION_CONFIGS[config_key].get('excel_freeze_cell', "B2")
             
             # Применяем стили с настройками закрепления
             apply_excel_styling(workbook, freeze_cell)
@@ -2106,28 +2118,55 @@ def convert_json_to_excel(input_json_path, output_excel_path, config_key=None):
     Returns:
         bool: True если конвертация успешна, False в противном случае
     """
-    # Определяем тип данных по config_key и имени файла
+    # Определяем тип данных по config_key
     if config_key == "leaders_for_admin":
         return convert_leaders_json_to_excel(input_json_path, output_excel_path, config_key)
     elif config_key == "reward":
         return convert_reward_json_to_excel(input_json_path, output_excel_path, config_key)
-    elif config_key == "reward_profiles":
-        return convert_reward_profiles_json_to_excel(input_json_path, output_excel_path, config_key)
+    elif config_key == "reward_profiles" or (config_key == "reward" and "reward_profiles" in FUNCTION_CONFIGS["reward"]):
+        return convert_reward_profiles_json_to_excel(input_json_path, output_excel_path, "reward")
+    elif config_key == "leaders_processing" or (config_key == "leaders_for_admin" and "leaders_processing" in FUNCTION_CONFIGS["leaders_for_admin"]):
+        return convert_leaders_json_to_excel(input_json_path, output_excel_path, "leaders_for_admin")
     else:
-        # Автоматическое определение по имени файла
-        file_name = os.path.basename(input_json_path).lower()
+        # Автоматическое определение по настройкам конфигурации
+        file_name = os.path.basename(input_json_path)
+        file_name_without_ext = os.path.splitext(file_name)[0]
+        
+        # Ищем подходящую конфигурацию по json_file
+        for config_key_name, config in FUNCTION_CONFIGS.items():
+            if "json_file" in config:
+                config_json_file = config["json_file"]
+                if config_json_file == file_name_without_ext:
+                    logger.info(LOG_MESSAGES['json_file_processing'].format(file_name=file_name) + f" (автоопределение по конфигурации: {config_key_name})")
+                    
+                    # Определяем тип обработки по config_key_name
+                    if config_key_name == "leaders_for_admin":
+                        return convert_leaders_json_to_excel(input_json_path, output_excel_path, config_key_name)
+                    elif config_key_name == "reward":
+                        return convert_reward_json_to_excel(input_json_path, output_excel_path, config_key_name)
+                    elif config_key_name == "reward_profiles" or (config_key_name == "reward" and "reward_profiles" in FUNCTION_CONFIGS["reward"]):
+                        return convert_reward_profiles_json_to_excel(input_json_path, output_excel_path, "reward")
+                    elif config_key_name == "leaders_processing" or (config_key_name == "leaders_for_admin" and "leaders_processing" in FUNCTION_CONFIGS["leaders_for_admin"]):
+                        return convert_leaders_json_to_excel(input_json_path, output_excel_path, "leaders_for_admin")
+                    else:
+                        # Для других типов используем обработку лидеров по умолчанию
+                        logger.info(LOG_MESSAGES['json_file_processing'].format(file_name=file_name) + f" (автоопределение: {config_key_name} -> лидеры)")
+                        return convert_leaders_json_to_excel(input_json_path, output_excel_path, config_key_name)
+        
+        # Если конфигурация не найдена, используем автоопределение по имени файла
+        file_name_lower = file_name.lower()
         
         # Если файл содержит "profiles" - используем обработку профилей наград
-        if "profiles" in file_name:
-            logger.info(LOG_MESSAGES['json_file_processing'].format(file_name=os.path.basename(input_json_path)) + " (автоопределение: профили наград)")
+        if "profiles" in file_name_lower:
+            logger.info(LOG_MESSAGES['json_file_processing'].format(file_name=file_name) + " (автоопределение по имени: профили наград)")
             return convert_reward_profiles_json_to_excel(input_json_path, output_excel_path, config_key)
         # Если файл содержит "leaders" - используем обработку лидеров
-        elif "leaders" in file_name:
-            logger.info(LOG_MESSAGES['json_file_processing'].format(file_name=os.path.basename(input_json_path)) + " (автоопределение: лидеры)")
+        elif "leaders" in file_name_lower:
+            logger.info(LOG_MESSAGES['json_file_processing'].format(file_name=file_name) + " (автоопределение по имени: лидеры)")
             return convert_leaders_json_to_excel(input_json_path, output_excel_path, config_key)
         else:
             # По умолчанию используем обработку лидеров
-            logger.info(LOG_MESSAGES['json_file_processing'].format(file_name=os.path.basename(input_json_path)) + " (автоопределение: по умолчанию - лидеры)")
+            logger.info(LOG_MESSAGES['json_file_processing'].format(file_name=file_name) + " (автоопределение по умолчанию: лидеры)")
             return convert_leaders_json_to_excel(input_json_path, output_excel_path, config_key)
 
 @measure_time
@@ -2151,8 +2190,17 @@ def convert_specific_json_file(file_name_without_extension, config_key=None):
         # Генерируем уникальное имя Excel файла
         if config_key and config_key in FUNCTION_CONFIGS:
             config = FUNCTION_CONFIGS[config_key]
-            excel_file_base = config.get("excel_file", file_name_without_extension)
-            selected_variant = config.get("selected_variant", "sigma")
+            
+            # Проверяем, есть ли вложенные конфигурации
+            if config_key == "reward" and "reward_profiles" in config:
+                excel_file_base = config["reward_profiles"].get("excel_file", file_name_without_extension)
+                selected_variant = config.get("selected_variant", "sigma")
+            elif config_key == "leaders_for_admin" and "leaders_processing" in config:
+                excel_file_base = config["leaders_processing"].get("excel_file", file_name_without_extension)
+                selected_variant = config.get("selected_variant", "sigma")
+            else:
+                excel_file_base = config.get("excel_file", file_name_without_extension)
+                selected_variant = config.get("selected_variant", "sigma")
             
             # Создаем временную метку
             timestamp = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
@@ -2285,8 +2333,8 @@ def main():
                         elif script_name == "reward":
                             generate_reward_script()
                         elif script_name == "reward_profiles":
-                            # reward_profiles не генерирует скрипты, только обрабатывает JSON
-                            logger.info(LOG_MESSAGES['script_generation_skipped'].format(script_name=script_name, operations="json_only"))
+                            # reward_profiles теперь обрабатывается как часть reward
+                            logger.info(LOG_MESSAGES['script_generation_skipped'].format(script_name=script_name, operations="внутри reward"))
                         elif script_name == "profile":
                             generate_profile_script()
                         elif script_name == "news_details":
@@ -2322,6 +2370,26 @@ def main():
                             logger.info(LOG_MESSAGES['json_file_processing_info'].format(json_file=json_file))
                             
                             convert_specific_json_file(json_file, script_name)
+                        elif script_name == "reward" and "reward_profiles" in config:
+                            # Обработка reward_profiles как части reward
+                            reward_profiles_config = config["reward_profiles"]
+                            if "json_file" in reward_profiles_config:
+                                json_file = reward_profiles_config["json_file"]
+                                logger.info(LOG_MESSAGES['json_file_processing_info'].format(json_file=json_file))
+                                
+                                convert_specific_json_file(json_file, script_name)
+                            else:
+                                logger.warning(LOG_MESSAGES['no_json_file_warning'].format(script_name=script_name))
+                        elif script_name == "leaders_for_admin" and "leaders_processing" in config:
+                            # Обработка leaders_processing как части leaders_for_admin
+                            leaders_processing_config = config["leaders_processing"]
+                            if "json_file" in leaders_processing_config:
+                                json_file = leaders_processing_config["json_file"]
+                                logger.info(LOG_MESSAGES['json_file_processing_info'].format(json_file=json_file))
+                                
+                                convert_specific_json_file(json_file, script_name)
+                            else:
+                                logger.warning(LOG_MESSAGES['no_json_file_warning'].format(script_name=script_name))
                         else:
                             logger.warning(LOG_MESSAGES['no_json_file_warning'].format(script_name=script_name))
                     else:

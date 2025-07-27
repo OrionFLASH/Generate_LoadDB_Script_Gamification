@@ -343,7 +343,14 @@ FUNCTION_CONFIGS = {
         }
     },
     "input_file": "TOURNAMENT-SCHEDULE (PROM) 2025-07-25 v6.csv",
-    "active_operations": "both"
+    "active_operations": "both",
+    "leaders_processing": {
+        "name": "Leaders Processing",
+        "description": "Обработка лидеров турниров из JSON в Excel",
+        "active_operations": "json_only",
+        "json_file": "leadersForAdmin_SIGMA_20250726-192035",
+        "excel_file": "LeadersForAdmin"
+    }
 }
 ```
 
@@ -365,7 +372,14 @@ FUNCTION_CONFIGS = {
         }
     },
     "input_file": "REWARD (PROM) 2025-07-24 v1.csv",
-    "active_operations": "scripts_only"
+    "active_operations": "scripts_only",
+    "reward_profiles": {
+        "name": "Reward Profiles",
+        "description": "Обработка профилей наград из JSON в Excel",
+        "active_operations": "json_only",
+        "json_file": "profiles_SIGMA_20250727-032838",
+        "excel_file": "RewardProfiles"
+    }
 }
 ```
 
@@ -437,9 +451,9 @@ FUNCTION_CONFIGS = {
       "leaders": [
         {
           "isMarked": false,
-          "employeeNumber": "00640863",
-          "lastName": "Спирчагова",
-          "firstName": "Ольга",
+          "employeeNumber": "12345678",
+          "lastName": "Сидорова",
+          "firstName": "Анна",
           "terDivisionName": "МБ",
           "gosbCode": "90384",
           "earnedBadges": [],
@@ -485,12 +499,26 @@ FUNCTION_CONFIGS = {
 
 **Конфигурация:**
 ```python
-"reward_profiles": {
-    "name": "Reward Profiles",
-    "description": "Обработка профилей наград из JSON в Excel",
-    "active_operations": "json_only",
-    "json_file": "profiles_SIGMA_20250727-032838",
-    "excel_file": "RewardProfiles"
+"reward": {
+    # ... основная конфигурация reward ...
+    "reward_profiles": {
+        "name": "Reward Profiles",
+        "description": "Обработка профилей наград из JSON в Excel",
+        "active_operations": "json_only",
+        "json_file": "profiles_SIGMA_20250727-032838",
+        "excel_file": "RewardProfiles"
+    }
+}
+
+"leaders_for_admin": {
+    # ... основная конфигурация leaders_for_admin ...
+    "leaders_processing": {
+        "name": "Leaders Processing",
+        "description": "Обработка лидеров турниров из JSON в Excel",
+        "active_operations": "json_only",
+        "json_file": "leadersForAdmin_SIGMA_20250726-192035",
+        "excel_file": "LeadersForAdmin"
+    }
 }
 ```
 
@@ -952,11 +980,11 @@ REWARD_003
       "tournament": {
         "leaders": [
           {
-            "employeeNumber": "12345",
-            "lastName": "Иванов",
-            "firstName": "Иван",
-            "middleName": "Иванович",
-            "fullName": "Иванов Иван Иванович",
+            "employeeNumber": "87654321",
+            "lastName": "Козлов",
+            "firstName": "Дмитрий",
+            "middleName": "Александрович",
+            "fullName": "Козлов Дмитрий Александрович",
             "division": "Центральный банк",
             "position": "Менеджер",
             "rating": 95.5,
@@ -976,13 +1004,13 @@ REWARD_003
     "profilesCount": 150,
     "profiles": [
       {
-        "employeeNumber": "12345",
-        "lastName": "Петров",
-        "firstName": "Петр",
-        "middleName": "Петрович",
-        "fullName": "Петров Петр Петрович",
-        "email": "petrov@sberbank.ru",
-        "phone": "+7-999-123-45-67",
+        "employeeNumber": "98765432",
+        "lastName": "Морозов",
+        "firstName": "Сергей",
+        "middleName": "Владимирович",
+        "fullName": "Морозов Сергей Владимирович",
+        "email": "morozov@sberbank.ru",
+        "phone": "+7-999-987-65-43",
         "terDivisionName": "Центральный банк",
         "divisionName": "Отдел продаж",
         "departmentName": "Департамент розничного бизнеса",
@@ -1058,28 +1086,28 @@ excel_path = convert_reward_json_to_excel(
 ```python
 # Входные данные
 profile_data = {
-    "employeeNumber": "12345",
-    "lastName": "Петров",
-    "firstName": "Петр",
+    "employeeNumber": "55566677",
+    "lastName": "Новиков",
+    "firstName": "Алексей",
     "division": {
         "name": "Центральный банк",
         "code": "CB001"
     },
     "contacts": {
-        "email": "petrov@sberbank.ru",
-        "phone": "+7-999-123-45-67"
+        "email": "novikov@sberbank.ru",
+        "phone": "+7-999-555-44-33"
     }
 }
 
 # Результат flatten_reward_profile_data()
 flattened_data = {
-    "employeeNumber": "12345",
-    "lastName": "Петров",
-    "firstName": "Петр",
+    "employeeNumber": "55566677",
+    "lastName": "Новиков",
+    "firstName": "Алексей",
     "divisionName": "Центральный банк",
     "divisionCode": "CB001",
-    "email": "petrov@sberbank.ru",
-    "phone": "+7-999-123-45-67"
+    "email": "novikov@sberbank.ru",
+    "phone": "+7-999-555-44-33"
 }
 ```
 
@@ -1114,7 +1142,7 @@ flattened_data = {
 
 ```python
 # Активные скрипты для обработки
-ACTIVE_SCRIPTS = ["leaders_for_admin", "reward"]
+ACTIVE_SCRIPTS = ["leaders_for_admin", "reward"]  # оба включают в себя обработку JSON
 
 # Уровень логирования
 LOG_LEVEL = "DEBUG"
@@ -1226,8 +1254,8 @@ python main.py leaders_for_admin
 #### Изменение активных скриптов
 ```python
 # В main.py изменить:
-ACTIVE_SCRIPTS = ["reward"]  # Только reward
-ACTIVE_SCRIPTS = ["leaders_for_admin", "reward"]  # Оба скрипта
+ACTIVE_SCRIPTS = ["reward"]  # Только reward (включает reward_profiles)
+ACTIVE_SCRIPTS = ["leaders_for_admin", "reward"]  # Оба скрипта (включают обработку JSON)
 ```
 
 #### Изменение окружения
@@ -1521,7 +1549,8 @@ if config_key == "new_script":
 LOG_LEVEL = "DEBUG"
 
 # Тестирование конкретного скрипта
-ACTIVE_SCRIPTS = ["reward"]
+ACTIVE_SCRIPTS = ["reward"]  # включает reward_profiles
+ACTIVE_SCRIPTS = ["leaders_for_admin"]  # включает leaders_processing
 
 # Только генерация скриптов
 "active_operations": "scripts_only"
