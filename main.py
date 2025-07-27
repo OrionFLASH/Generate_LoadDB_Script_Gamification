@@ -800,7 +800,7 @@ def get_data():
         list: Список данных для обработки
     """
     # Эта функция теперь используется только для тестовых данных
-    # Для каждого скрипта данные загружаются индивидуально в generate_script_universal
+    # Для каждого скрипта данные загружаются индивидуально в соответствующих функциях
     logger.info(LOG_MESSAGES['using_test_data'].format(count=len(TEST_DATA_LIST)))
     return TEST_DATA_LIST.copy()
 
@@ -1594,25 +1594,78 @@ def generate_reward_script(data_list=None):
     const code = ids[i];
     const baseUrl = `${{BASE_URL}}${{code}}/profiles`;
     console.log(`\\n🔍 [${{i + 1}}/${{ids.length}}] Код: ${{code}}`);
+    
     try {{
+      // Первый запрос для получения информации о количестве участников
+      console.log(`📄 [${{i + 1}}/${{ids.length}}] Код: ${{code}} - Запрос страницы 1`);
       const firstResp = await fetchWithRetry(`${{baseUrl}}?pageNum=1&divisionLevel=BANK`, {{
         headers: {{ 'Accept': 'application/json', 'Cookie': document.cookie, 'User-Agent': navigator.userAgent }},
         credentials: 'include'
       }});
-      const firstData = await firstResp.json();
-      const count = extractContestantsCount(firstData?.body?.badge?.contestants);
-      console.log(`👥 Участников: ${{count}}`);
       
-      if (count === 0) {{
-        console.log(`⏭️ Пропускаем ${{code}} - нет участников`);
+      if (!firstResp.ok) {{
+        console.error(`❌ [${{i + 1}}/${{ids.length}}] Код: ${{code}} - HTTP ошибка: ${{firstResp.status}}`);
         continue;
       }}
       
-      console.log(`✅ Код ${{code}}: успешно, участников: ${{count}}`);
-              results[code] = [firstData];
-        totalProfiles += (firstData?.body?.badge?.profiles?.length || 0);
+      const firstData = await firstResp.json();
+      const contestantsText = firstData?.body?.badge?.contestants;
+      const count = extractContestantsCount(contestantsText);
+      
+      console.log(`👥 [${{i + 1}}/${{ids.length}}] Код: ${{code}} - Участников: ${{count}} (из текста: "${{contestantsText}}")`);
+      
+      if (count === 0) {{
+        console.log(`⏭️ [${{i + 1}}/${{ids.length}}] Код: ${{code}} - Пропускаем (нет участников)`);
+        continue;
+      }}
+      
+      // Вычисляем количество страниц (делим на 100 с округлением вверх)
+      const pagesCount = Math.ceil(count / 100);
+      console.log(`📊 [${{i + 1}}/${{ids.length}}] Код: ${{code}} - Страниц для запроса: ${{pagesCount}} (участников: ${{count}}, по 100 на страницу)`);
+      
+      // Сохраняем первый запрос
+      results[code] = [firstData];
+      totalProfiles += (firstData?.body?.badge?.profiles?.length || 0);
+      
+      // Запрашиваем дополнительные страницы, если нужно
+      if (pagesCount > 1) {{
+        for (let page = 2; page <= pagesCount; page++) {{
+          try {{
+            console.log(`📄 [${{i + 1}}/${{ids.length}}] Код: ${{code}} - Запрос страницы ${{page}}/${{pagesCount}}`);
+            const pageResp = await fetchWithRetry(`${{baseUrl}}?pageNum=${{page}}&divisionLevel=BANK`, {{
+              headers: {{ 'Accept': 'application/json', 'Cookie': document.cookie, 'User-Agent': navigator.userAgent }},
+              credentials: 'include'
+            }});
+            
+            if (!pageResp.ok) {{
+              console.error(`❌ [${{i + 1}}/${{ids.length}}] Код: ${{code}} - Страница ${{page}} - HTTP ошибка: ${{pageResp.status}}`);
+              continue;
+            }}
+            
+            const pageData = await pageResp.json();
+            results[code].push(pageData);
+            totalProfiles += (pageData?.body?.badge?.profiles?.length || 0);
+            console.log(`✅ [${{i + 1}}/${{ids.length}}] Код: ${{code}} - Страница ${{page}}/${{pagesCount}} - Успешно`);
+            
+            // Задержка между запросами страниц
+            if (page < pagesCount) {{
+              await new Promise(resolve => setTimeout(resolve, {delay} * 1000));
+            }}
+          }} catch (pageError) {{
+            console.error(`❌ [${{i + 1}}/${{ids.length}}] Код: ${{code}} - Страница ${{page}} - Ошибка:`, pageError);
+          }}
+        }}
+      }}
+      
+      console.log(`✅ [${{i + 1}}/${{ids.length}}] Код: ${{code}} - Завершен, всего страниц: ${{results[code].length}}`);
+      
     }} catch (e) {{
-      console.error(`❌ Ошибка при обработке ${{code}}:`, e);
+      console.error(`❌ [${{i + 1}}/${{ids.length}}] Код: ${{code}} - Критическая ошибка:`, e);
+    }}
+    
+    // Задержка между кодами
+    if (i < ids.length - 1) {{
+      await new Promise(resolve => setTimeout(resolve, {delay} * 1000));
     }}
   }}
 
@@ -1644,7 +1697,9 @@ def generate_profile_script(data_list=None):
     Returns:
         str: Сгенерированный JavaScript скрипт
     """
-    return generate_script_universal("profile", data_list)
+    logger = get_script_logger("profile", "generation")
+    logger.warning("⚠️ Функция generate_profile_script не реализована")
+    return "// Заглушка: функция generate_profile_script не реализована"
 
 def generate_news_details_script(data_list=None):
     """
@@ -1656,7 +1711,9 @@ def generate_news_details_script(data_list=None):
     Returns:
         str: Сгенерированный JavaScript скрипт
     """
-    return generate_script_universal("news_details", data_list)
+    logger = get_script_logger("news_details", "generation")
+    logger.warning("⚠️ Функция generate_news_details_script не реализована")
+    return "// Заглушка: функция generate_news_details_script не реализована"
 
 def generate_address_book_tn_script(data_list=None):
     """
@@ -1668,7 +1725,9 @@ def generate_address_book_tn_script(data_list=None):
     Returns:
         str: Сгенерированный JavaScript скрипт
     """
-    return generate_script_universal("address_book_tn", data_list)
+    logger = get_script_logger("address_book_tn", "generation")
+    logger.warning("⚠️ Функция generate_address_book_tn_script не реализована")
+    return "// Заглушка: функция generate_address_book_tn_script не реализована"
 
 def generate_address_book_dev_script(data_list=None):
     """
@@ -1680,7 +1739,9 @@ def generate_address_book_dev_script(data_list=None):
     Returns:
         str: Сгенерированный JavaScript скрипт
     """
-    return generate_script_universal("address_book_dev", data_list)
+    logger = get_script_logger("address_book_dev", "generation")
+    logger.warning("⚠️ Функция generate_address_book_dev_script не реализована")
+    return "// Заглушка: функция generate_address_book_dev_script не реализована"
 
 def generate_orders_script(data_list=None):
     """
@@ -1692,7 +1753,9 @@ def generate_orders_script(data_list=None):
     Returns:
         str: Сгенерированный JavaScript скрипт
     """
-    return generate_script_universal("orders", data_list)
+    logger = get_script_logger("orders", "generation")
+    logger.warning("⚠️ Функция generate_orders_script не реализована")
+    return "// Заглушка: функция generate_orders_script не реализована"
 
 def generate_news_list_script(data_list=None):
     """
@@ -1704,7 +1767,9 @@ def generate_news_list_script(data_list=None):
     Returns:
         str: Сгенерированный JavaScript скрипт
     """
-    return generate_script_universal("news_list", data_list)
+    logger = get_script_logger("news_list", "generation")
+    logger.warning("⚠️ Функция generate_news_list_script не реализована")
+    return "// Заглушка: функция generate_news_list_script не реализована"
 
 def generate_rating_list_script(data_list=None):
     """
@@ -1716,7 +1781,9 @@ def generate_rating_list_script(data_list=None):
     Returns:
         str: Сгенерированный JavaScript скрипт
     """
-    return generate_script_universal("rating_list", data_list)
+    logger = get_script_logger("rating_list", "generation")
+    logger.warning("⚠️ Функция generate_rating_list_script не реализована")
+    return "// Заглушка: функция generate_rating_list_script не реализована"
 
 # =============================================================================
 # ФУНКЦИИ ОБРАБОТКИ JSON В EXCEL
