@@ -228,7 +228,7 @@ LOG_MESSAGES = {
     "script_generation_info": "Генерация скрипта: {script_name}",  # Ключ: генерация скрипта
     "script_generation_skipped": "Пропуск генерации скрипта для {script_name} (режим: {operations})",  # Ключ: пропуск генерации
     "unknown_script_error": "Неизвестный скрипт: {script_name}",  # Ключ: неизвестный скрипт
-    "stage2_title": "=== ЭТАП 2: ОБРАБОТКА JSON ФАЙЛОВ ===",  # Ключ: заголовок этапа 2
+    "stage2_title": "=== ЭТАП 2: ОБРАБОТКА JSON ФАЙЛОВ В EXCEL ===",  # Ключ: заголовок этапа 2
     "json_file_processing_info": "Обработка JSON файла: {json_file}",  # Ключ: обработка JSON файла
     "no_json_file_warning": "Для скрипта {script_name} не указан json_file",  # Ключ: нет JSON файла
     "json_processing_skipped": "Пропуск обработки JSON для {script_name} (режим: {operations})",  # Ключ: пропуск обработки JSON
@@ -286,7 +286,7 @@ FUNCTION_CONFIGS = {
             "description": "Обработка лидеров турниров из JSON в Excel",  # Ключ: описание назначения скрипта
             "active_operations": "json_only",  # Ключ: активные операции ("scripts_only", "json_only", "both")
             "excel_freeze_row": 1,  # Ключ: номер строки для закрепления в Excel (1 = заголовок)
-            "json_file": "leadersForAdmin_SIGMA_20250726-192035",  # Ключ: имя JSON файла для обработки (без расширения)
+            "json_file": "leadersForAdmin_SIGMA_20250727-130522",  # Ключ: имя JSON файла для обработки (без расширения)
             "excel_file": "LeadersForAdmin",  # Ключ: имя Excel файла для создания (без расширения)
             "excel_freeze_cell": "B2"  # Ключ: ячейка для закрепления в Excel (B2 = первая строка и первая колонка)
         }
@@ -294,7 +294,7 @@ FUNCTION_CONFIGS = {
     "reward": {  # Ключ: конфигурация для скрипта REWARD (выгрузка профилей участников по кодам наград)
         "name": "Reward",  # Ключ: название скрипта для отображения
         "description": "Выгрузка профилей участников по кодам наград",  # Ключ: описание назначения скрипта
-        "active_operations": "scripts_only",  # Ключ: активные операции ("scripts_only", "json_only", "both")
+        "active_operations": "both",  # Ключ: активные операции ("scripts_only", "json_only", "both")
         "variants": {  # Ключ: варианты конфигурации (SIGMA/ALPHA)
             "sigma": {  # Ключ: вариант SIGMA (продакшн окружение)
                 "name": "Reward (SIGMA)",  # Ключ: название варианта
@@ -340,9 +340,9 @@ FUNCTION_CONFIGS = {
             "description": "Обработка профилей наград из JSON в Excel",  # Ключ: описание назначения скрипта
             "active_operations": "json_only",  # Ключ: активные операции ("scripts_only", "json_only", "both")
             "excel_freeze_row": 1,  # Ключ: номер строки для закрепления в Excel (1 = заголовок)
-            "json_file": "profiles_SIGMA_20250727-032838",  # Ключ: имя JSON файла для обработки (без расширения)
+            "json_file": "profiles_SIGMA_20250727-130833",  # Ключ: имя JSON файла для обработки (без расширения)
             "excel_file": "RewardProfiles",  # Ключ: имя Excel файла для создания (без расширения)
-            "excel_freeze_cell": "B2"  # Ключ: ячейка для закрепления в Excel (B2 = первая строка и первая колонка)
+            "excel_freeze_cell": "F2"  # Ключ: ячейка для закрепления в Excel (B2 = первая строка и первая колонка)
         }
     },
     "profile": {  # Ключ: конфигурация для скрипта PROFILE (профили сотрудников)
@@ -524,7 +524,7 @@ def setup_logging():
     log_filename = f"{LOG_FILENAME_BASE}_{LOG_LEVEL}_{timestamp}.log"
     log_filepath = os.path.join(log_dir, log_filename)
     
-    # Настройка логгера
+    # Настройка основного логгера
     logger = logging.getLogger('GameScriptGenerator')
     logger.setLevel(getattr(logging, LOG_LEVEL))
     
@@ -556,6 +556,40 @@ def setup_logging():
     logger.addHandler(console_handler)
     
     return logger
+
+def get_script_logger(script_name, stage=None):
+    """
+    Получение логгера для конкретного скрипта и стадии
+    
+    Args:
+        script_name (str): Название скрипта (leaders_for_admin, reward, etc.)
+        stage (str, optional): Стадия обработки (generation, processing, conversion)
+        
+    Returns:
+        logging.Logger: Логгер с конкретным названием
+    """
+    if stage:
+        logger_name = f'GameScriptGenerator.{script_name}.{stage}'
+    else:
+        logger_name = f'GameScriptGenerator.{script_name}'
+    
+    script_logger = logging.getLogger(logger_name)
+    
+    # Если у логгера нет обработчиков, наследуем от основного
+    if not script_logger.handlers:
+        # Убеждаемся, что основной логгер инициализирован
+        if logger is None:
+            setup_logging()
+        
+        if logger and logger.handlers:
+            script_logger.handlers = logger.handlers.copy()
+            script_logger.setLevel(logger.level)
+            script_logger.propagate = False
+        else:
+            # Fallback: используем основной логгер
+            script_logger = logger
+    
+    return script_logger
 
 # =============================================================================
 # ДЕКОРАТОРЫ ДЛЯ ИЗМЕРЕНИЯ ВРЕМЕНИ ВЫПОЛНЕНИЯ
@@ -1287,17 +1321,18 @@ def generate_leaders_for_admin_script(data_list=None):
     Returns:
         str: Сгенерированный JavaScript скрипт
     """
-    logger.info(LOG_MESSAGES['script_generation_start'].format(script_name="LeadersForAdmin"))
-    logger.debug(LOG_MESSAGES['function_start'].format(func="generate_leaders_for_admin_script", params=f"args=({data_list}), kwargs=[]"))
+    script_logger = get_script_logger("leaders_for_admin", "generation")
+    script_logger.info(LOG_MESSAGES['script_generation_start'].format(script_name="LeadersForAdmin"))
+    script_logger.debug(LOG_MESSAGES['function_start'].format(func="generate_leaders_for_admin_script", params=f"args=({data_list}), kwargs=[]"))
     
     # Загрузка данных и конфигурации
-    logger.info(LOG_MESSAGES['data_loading'])
+    script_logger.info(LOG_MESSAGES['data_loading'])
     config, data_list, selected_variant, variant_config = load_script_data("leaders_for_admin", data_list)
     
-    logger.info(LOG_MESSAGES['config_loaded_count'].format(count=len(data_list)))
-    logger.debug(LOG_MESSAGES['variant_selected'].format(variant=selected_variant))
-    logger.debug(LOG_MESSAGES['domain_info'].format(domain=variant_config['domain']))
-    logger.debug(LOG_MESSAGES['api_path_info'].format(api_path=variant_config['params']['api_path']))
+    script_logger.info(LOG_MESSAGES['config_loaded_count'].format(count=len(data_list)))
+    script_logger.debug(LOG_MESSAGES['variant_selected'].format(variant=selected_variant))
+    script_logger.debug(LOG_MESSAGES['domain_info'].format(domain=variant_config['domain']))
+    script_logger.debug(LOG_MESSAGES['api_path_info'].format(api_path=variant_config['params']['api_path']))
     
     # Генерация JavaScript скрипта для LeadersForAdmin
     script = f"""// ==UserScript==
@@ -1395,11 +1430,11 @@ def generate_leaders_for_admin_script(data_list=None):
 }})();"""
     
     # Сохранение и копирование скрипта
-    logger.info(LOG_MESSAGES['script_saving'])
+    script_logger.info(LOG_MESSAGES['script_saving'])
     save_and_copy_script(script, config, "leaders_for_admin", data_list)
     
-    logger.info(LOG_MESSAGES['script_generated_success'].format(script_name="LeadersForAdmin", count=len(data_list)))
-    logger.debug(LOG_MESSAGES['function_completed'].format(func="generate_leaders_for_admin_script", params="args=(), kwargs=[]", time="0.0000"))
+    script_logger.info(LOG_MESSAGES['script_generated_success'].format(script_name="LeadersForAdmin", count=len(data_list)))
+    script_logger.debug(LOG_MESSAGES['function_completed'].format(func="generate_leaders_for_admin_script", params="args=(), kwargs=[]", time="0.0000"))
     return script
 
 @measure_time
@@ -1411,19 +1446,20 @@ def generate_reward_script(data_list=None):
     Returns:
         str: Сгенерированный JavaScript скрипт
     """
-    logger.info(LOG_MESSAGES['script_generation_start'].format(script_name="Reward"))
-    logger.debug(LOG_MESSAGES['function_start'].format(func="generate_reward_script", params=f"args=({data_list}), kwargs=[]"))
+    script_logger = get_script_logger("reward", "generation")
+    script_logger.info(LOG_MESSAGES['script_generation_start'].format(script_name="Reward"))
+    script_logger.debug(LOG_MESSAGES['function_start'].format(func="generate_reward_script", params=f"args=({data_list}), kwargs=[]"))
     
     import datetime
     import json
     
-    logger.info(LOG_MESSAGES['data_loading'])
+    script_logger.info(LOG_MESSAGES['data_loading'])
     config, data_list, selected_variant, variant_config = load_script_data("reward", data_list)
     
-    logger.info(LOG_MESSAGES['config_loaded_count'].format(count=len(data_list)))
-    logger.debug(LOG_MESSAGES['variant_selected'].format(variant=selected_variant))
-    logger.debug(LOG_MESSAGES['domain_info'].format(domain=variant_config['domain']))
-    logger.debug(LOG_MESSAGES['api_path_info'].format(api_path=variant_config['params']['api_path']))
+    script_logger.info(LOG_MESSAGES['config_loaded_count'].format(count=len(data_list)))
+    script_logger.debug(LOG_MESSAGES['variant_selected'].format(variant=selected_variant))
+    script_logger.debug(LOG_MESSAGES['domain_info'].format(domain=variant_config['domain']))
+    script_logger.debug(LOG_MESSAGES['api_path_info'].format(api_path=variant_config['params']['api_path']))
     
     delay = variant_config.get('delay_between_requests', 5)
     max_retries = variant_config.get('retry_count', 3)
@@ -1433,11 +1469,11 @@ def generate_reward_script(data_list=None):
     service = variant_config['params']['service']
     base_url = f"{domain}{api_path}"
     
-    logger.debug(LOG_MESSAGES['request_params'].format(delay=delay, max_retries=max_retries, timeout=timeout))
-    logger.debug(LOG_MESSAGES['base_url_info'].format(base_url=base_url))
+    script_logger.debug(LOG_MESSAGES['request_params'].format(delay=delay, max_retries=max_retries, timeout=timeout))
+    script_logger.debug(LOG_MESSAGES['base_url_info'].format(base_url=base_url))
     
     ids_string = ', '.join([f'"{item}"' for item in data_list])
-    logger.debug(LOG_MESSAGES['ids_generated'].format(count=len(data_list)))
+    script_logger.debug(LOG_MESSAGES['ids_generated'].format(count=len(data_list)))
     script = f'''// ==UserScript==
 // Скрипт для DevTools. Выгрузка профилей участников по кодам наград с пагинацией
 // Вариант: {selected_variant.upper()}
@@ -1477,7 +1513,7 @@ def generate_reward_script(data_list=None):
   }}
 
   function extractContestantsCount(text) {{
-    const match = text?.match(/(\d+)/);
+    const match = text?.match(/(\\d+)/);
     return match ? parseInt(match[1], 10) : 0;
   }}
 
@@ -1519,29 +1555,9 @@ def generate_reward_script(data_list=None):
         continue;
       }}
       
-      const pages = Math.ceil(count / 100) || 1;
-      console.log(`📄 Страниц: ${{pages}}`);
-      let profiles = [];
-      for (let page = 1; page <= pages; page++) {{
-        const url = `${{baseUrl}}?pageNum=${{page}}&divisionLevel=BANK`;
-        console.log(`📄 Страница ${{page}} из ${{pages}}`);
-        const resp = await fetchWithRetry(url, {{
-          headers: {{ 'Accept': 'application/json', 'Cookie': document.cookie, 'User-Agent': navigator.userAgent }},
-          credentials: 'include'
-        }});
-        const data = await resp.json();
-        const parsed = extractProfiles(data);
-        if (parsed?.profiles?.length) profiles.push(...parsed.profiles);
-        await new Promise(r => setTimeout(r, {delay}));
-      }}
-      results[code] = {{
-        profilesCount: profiles.length,
-        profiles,
-        badgeInfo: firstData?.body?.badge || {{}},
-        totalContestants: count,
-        pages
-      }};
-      totalProfiles += profiles.length;
+      console.log(`✅ Код ${{code}}: успешно, участников: ${{count}}`);
+              results[code] = [firstData];
+        totalProfiles += (firstData?.body?.badge?.profiles?.length || 0);
     }} catch (e) {{
       console.error(`❌ Ошибка при обработке ${{code}}:`, e);
     }}
@@ -1558,11 +1574,11 @@ def generate_reward_script(data_list=None):
   console.log(`\\n✅ Завершено. Всего профилей: ${{totalProfiles}}`);
 }})();
 '''
-    logger.info(LOG_MESSAGES['script_saving'])
+    script_logger.info(LOG_MESSAGES['script_saving'])
     save_script_to_file(script, config['name'], "reward")
     
-    logger.info(LOG_MESSAGES['script_generated_success'].format(script_name="Reward", count=len(data_list)))
-    logger.debug(LOG_MESSAGES['function_completed'].format(func="generate_reward_script", params="args=(), kwargs=[]", time="0.0000"))
+    script_logger.info(LOG_MESSAGES['script_generated_success'].format(script_name="Reward", count=len(data_list)))
+    script_logger.debug(LOG_MESSAGES['function_completed'].format(func="generate_reward_script", params="args=(), kwargs=[]", time="0.0000"))
     return script
 
 def generate_profile_script(data_list=None):
@@ -1665,8 +1681,10 @@ def load_json_data(input_json_path):
     """
     try:
         logger.info(LOG_MESSAGES['json_data_loading'])
+        logger.debug(f"Загружаем JSON файл: {input_json_path}")
         with open(input_json_path, 'r', encoding='utf-8') as f:
             json_data = json.load(f)
+        logger.debug(f"JSON загружен. Тип: {type(json_data)}, количество ключей: {len(json_data) if isinstance(json_data, dict) else 'не dict'}")
         return json_data
     except Exception as e:
         logger.error(LOG_MESSAGES['json_load_error'].format(file_path=input_json_path, error=e))
@@ -1700,13 +1718,16 @@ def save_excel_file(df, output_excel_path, config_key=None):
             # Получаем настройки закрепления из конфигурации
             freeze_cell = "B2"  # По умолчанию закрепляем первую строку и первую колонку
             if config_key and config_key in FUNCTION_CONFIGS:
+                config = FUNCTION_CONFIGS[config_key]
                 # Проверяем, есть ли вложенные конфигурации
-                if config_key == "reward" and "reward_profiles" in FUNCTION_CONFIGS[config_key]:
-                    freeze_cell = FUNCTION_CONFIGS[config_key]["reward_profiles"].get('excel_freeze_cell', "B2")
-                elif config_key == "leaders_for_admin" and "leaders_processing" in FUNCTION_CONFIGS[config_key]:
-                    freeze_cell = FUNCTION_CONFIGS[config_key]["leaders_processing"].get('excel_freeze_cell', "B2")
+                if config_key == "reward" and "reward_profiles" in config:
+                    reward_profiles_config = config["reward_profiles"]
+                    freeze_cell = reward_profiles_config.get('excel_freeze_cell', "B2")
+                elif config_key == "leaders_for_admin" and "leaders_processing" in config:
+                    leaders_processing_config = config["leaders_processing"]
+                    freeze_cell = leaders_processing_config.get('excel_freeze_cell', "B2")
                 else:
-                    freeze_cell = FUNCTION_CONFIGS[config_key].get('excel_freeze_cell', "B2")
+                    freeze_cell = config.get('excel_freeze_cell', "B2")
             
             # Применяем стили с настройками закрепления
             apply_excel_styling(workbook, freeze_cell)
@@ -1716,7 +1737,7 @@ def save_excel_file(df, output_excel_path, config_key=None):
             create_statistics_sheet(workbook, df)
             
             # Создание специального листа для reward данных
-            if config_key == "reward":
+            if config_key == "reward" or (config_key and "reward" in config_key):
                 create_reward_summary_sheet(workbook, df)
         
         logger.info(LOG_MESSAGES['json_excel_success'].format(file_path=output_excel_path))
@@ -1740,7 +1761,8 @@ def convert_leaders_json_to_excel(input_json_path, output_excel_path, config_key
         bool: True если конвертация успешна, False в противном случае
     """
     try:
-        logger.info(LOG_MESSAGES['json_conversion_start'].format(input=input_json_path, output=output_excel_path))
+        script_logger = get_script_logger("leaders_for_admin", "conversion")
+        script_logger.info(LOG_MESSAGES['json_conversion_start'].format(input=input_json_path, output=output_excel_path))
         
         # Проверка существования входного файла
         if not os.path.exists(input_json_path):
@@ -1816,7 +1838,7 @@ def convert_leaders_json_to_excel(input_json_path, output_excel_path, config_key
         logger.info(LOG_MESSAGES['json_records_processed'].format(count=len(df)))
         
         # Сохранение в Excel
-        return save_excel_file(df, output_excel_path, config_key)
+        return save_excel_file(df, output_excel_path, "leaders_for_admin")
         
     except Exception as e:
         logger.error(LOG_MESSAGES['json_leaders_conversion_error'].format(error=e))
@@ -1902,7 +1924,39 @@ def convert_reward_profiles_json_to_excel(input_json_path, output_excel_path, co
             total_leaders = 0
             
             for reward_code, reward_value in json_data.items():
-                if isinstance(reward_value, dict):
+                # Новая структура: массив с body.badge.leaders
+                if isinstance(reward_value, list) and reward_value:
+                    first_item = reward_value[0]
+                    if isinstance(first_item, dict) and 'body' in first_item:
+                        body = first_item['body']
+                        if isinstance(body, dict) and 'badge' in body:
+                            badge = body['badge']
+                            
+                            # Получаем лидеров из body.badge.leaders
+                            leaders = badge.get('leaders', [])
+                            contestants = badge.get('contestants', '')
+                            badge_id = badge.get('badgeId', reward_code)
+                            
+                            if leaders:
+                                # Добавляем информацию о коде награды к каждому лидеру
+                                for leader in leaders:
+                                    if isinstance(leader, dict):
+                                        leader_with_reward = flatten_reward_leader_data(leader, reward_code)
+                                        
+                                        # Добавляем информацию о награде
+                                        leader_with_reward['badgeId'] = badge_id
+                                        leader_with_reward['contestants'] = contestants
+                                        leader_with_reward['profilesCount'] = len(leaders)
+                                        
+                                        all_leaders_data.append(leader_with_reward)
+                                
+                                total_rewards += 1
+                                total_leaders += len(leaders)
+                                logger.debug(LOG_MESSAGES['json_reward_found'].format(key=reward_code, count=len(leaders)))
+                                logger.info(LOG_MESSAGES['reward_profiles_leaders_found'].format(code=reward_code, count=len(leaders), structure="body.badge.leaders"))
+                
+                # Старая структура: объект с badgeInfo.leaders
+                elif isinstance(reward_value, dict):
                     # Получаем информацию о награде
                     profiles_count = reward_value.get('profilesCount', 0)
                     badge_info = reward_value.get('badgeInfo', {})
@@ -1954,7 +2008,7 @@ def convert_reward_profiles_json_to_excel(input_json_path, output_excel_path, co
         logger.info(LOG_MESSAGES['json_records_processed'].format(count=len(df)))
         
         # Сохранение в Excel
-        return save_excel_file(df, output_excel_path, config_key)
+        return save_excel_file(df, output_excel_path, "reward")
         
     except Exception as e:
         logger.error(LOG_MESSAGES['json_reward_profiles_conversion_error'].format(error=e))
@@ -1974,7 +2028,8 @@ def convert_reward_json_to_excel(input_json_path, output_excel_path, config_key=
         bool: True если конвертация успешна, False в противном случае
     """
     try:
-        logger.info(LOG_MESSAGES['json_conversion_start'].format(input=input_json_path, output=output_excel_path))
+        script_logger = get_script_logger("reward", "conversion")
+        script_logger.info(LOG_MESSAGES['json_conversion_start'].format(input=input_json_path, output=output_excel_path))
         
         # Проверка существования входного файла
         if not os.path.exists(input_json_path):
@@ -1987,7 +2042,9 @@ def convert_reward_json_to_excel(input_json_path, output_excel_path, config_key=
             return False
         
         # Обработка данных
-        logger.info(LOG_MESSAGES['json_data_processing'])
+        script_logger.info(LOG_MESSAGES['json_data_processing'])
+        script_logger.debug(f"Тип данных: {type(json_data)}")
+        script_logger.debug(f"Ключи в данных: {list(json_data.keys()) if isinstance(json_data, dict) else 'не словарь'}")
         all_profiles_data = []
         
         if isinstance(json_data, dict):
@@ -1995,9 +2052,77 @@ def convert_reward_json_to_excel(input_json_path, output_excel_path, config_key=
             total_rewards = 0
             total_profiles = 0
             
+            script_logger.debug(f"Начинаем обработку {len(json_data)} кодов наград")
+            
             for reward_code, reward_value in json_data.items():
-                # Новая структура данных (с информацией о структуре)
-                if isinstance(reward_value, dict):
+                script_logger.debug(f"Обрабатываем код награды: {reward_code}, тип значения: {type(reward_value)}")
+                # Новая структура данных (список как в leaders)
+                if isinstance(reward_value, list) and len(reward_value) > 0:
+                    first_data = reward_value[0]
+                    if isinstance(first_data, dict) and 'body' in first_data:
+                        body = first_data.get('body', {})
+                        badge = body.get('badge', {})
+                        profiles = badge.get('profiles', [])
+                        badge_info = badge
+                        
+                        script_logger.debug(f"Обрабатываем структуру массива для {reward_code}: профилей={len(profiles)}")
+                        
+                        if profiles and len(profiles) > 0:
+                            # Добавляем информацию о коде награды и данных награды к каждому профилю
+                            for profile in profiles:
+                                if isinstance(profile, dict):
+                                    profile_with_reward = profile.copy()
+                                    profile_with_reward['rewardCode'] = reward_code
+                                    
+                                    # Добавляем информацию о награде
+                                    if badge_info:
+                                        profile_with_reward['badgeName'] = badge_info.get('name', '')
+                                        profile_with_reward['badgeDescription'] = badge_info.get('description', '')
+                                        profile_with_reward['badgeType'] = badge_info.get('type', '')
+                                        profile_with_reward['badgeCategory'] = badge_info.get('category', '')
+                                    
+                                    all_profiles_data.append(profile_with_reward)
+                            
+                            total_rewards += 1
+                            total_profiles += len(profiles)
+                            script_logger.debug(LOG_MESSAGES['json_reward_found'].format(key=reward_code, count=len(profiles)))
+                            script_logger.info(f"Найдено профилей для кода награды {reward_code}: {len(profiles)} (структура массива)")
+                        else:
+                            script_logger.debug(f"Профили пусты для {reward_code}: {len(profiles)} профилей")
+                
+                # Старая структура данных (прямая структура с profiles)
+                elif isinstance(reward_value, dict) and 'profiles' in reward_value:
+                    profiles = reward_value.get('profiles', [])
+                    profiles_count = reward_value.get('profilesCount', 0)
+                    badge_info = reward_value.get('badgeInfo', {})
+                    
+                    script_logger.debug(f"Обрабатываем прямую структуру для {reward_code}: профилей={len(profiles)}")
+                    
+                    if profiles and len(profiles) > 0:
+                        # Добавляем информацию о коде награды и данных награды к каждому профилю
+                        for profile in profiles:
+                            if isinstance(profile, dict):
+                                profile_with_reward = profile.copy()
+                                profile_with_reward['rewardCode'] = reward_code
+                                
+                                # Добавляем информацию о награде
+                                if badge_info:
+                                    profile_with_reward['badgeName'] = badge_info.get('name', '')
+                                    profile_with_reward['badgeDescription'] = badge_info.get('description', '')
+                                    profile_with_reward['badgeType'] = badge_info.get('type', '')
+                                    profile_with_reward['badgeCategory'] = badge_info.get('category', '')
+                                
+                                all_profiles_data.append(profile_with_reward)
+                        
+                        total_rewards += 1
+                        total_profiles += len(profiles)
+                        script_logger.debug(LOG_MESSAGES['json_reward_found'].format(key=reward_code, count=len(profiles)))
+                        script_logger.info(f"Найдено профилей для кода награды {reward_code}: {len(profiles)} (прямая структура)")
+                    else:
+                        script_logger.debug(f"Профили пусты для {reward_code}: {len(profiles)} профилей")
+                
+                # Новая структура данных (с информацией о структуре - старая логика)
+                elif isinstance(reward_value, dict) and ('data' in reward_value or 'structure' in reward_value):
                     data = reward_value.get('data', {})
                     structure = reward_value.get('structure', 'unknown')
                     profiles_count = reward_value.get('profilesCount', 0)
@@ -2025,15 +2150,20 @@ def convert_reward_json_to_excel(input_json_path, output_excel_path, config_key=
                         
                         total_rewards += 1
                         total_profiles += len(profiles)
-                        logger.debug(LOG_MESSAGES['json_reward_found'].format(key=reward_code, count=len(profiles)))
-                        logger.info(LOG_MESSAGES['reward_profiles_found'].format(code=reward_code, count=len(profiles), structure=structure))
+                        script_logger.debug(LOG_MESSAGES['json_reward_found'].format(key=reward_code, count=len(profiles)))
+                        script_logger.info(LOG_MESSAGES['reward_profiles_found'].format(code=reward_code, count=len(profiles), structure=structure))
                 
                 # Старая структура данных (для обратной совместимости)
                 elif isinstance(reward_value, list) and len(reward_value) > 0:
                     # Проверяем, содержит ли первый элемент данные о награде
                     first_item = reward_value[0]
+                    script_logger.debug(f"Обрабатываем reward_value для {reward_code}: тип={type(reward_value)}, длина={len(reward_value)}")
+                    script_logger.debug(f"Первый элемент: тип={type(first_item)}, ключи={list(first_item.keys()) if isinstance(first_item, dict) else 'не словарь'}")
+                    
                     if isinstance(first_item, dict) and 'body' in first_item:
                         body = first_item['body']
+                        script_logger.debug(f"Найден body: ключи={list(body.keys()) if isinstance(body, dict) else 'не словарь'}")
+                        
                         # Проверяем разные возможные структуры данных
                         profiles = None
                         badge_info = None
@@ -2042,10 +2172,14 @@ def convert_reward_json_to_excel(input_json_path, output_excel_path, config_key=
                         if 'badge' in body and 'profiles' in body['badge']:
                             profiles = body['badge']['profiles']
                             badge_info = body['badge']
+                            script_logger.debug(f"Найдена структура body.badge.profiles: количество профилей={len(profiles) if profiles else 0}")
                         # Структура 2: body.profiles (прямые профили)
                         elif 'profiles' in body:
                             profiles = body['profiles']
                             badge_info = body
+                            script_logger.debug(f"Найдена структура body.profiles: количество профилей={len(profiles) if profiles else 0}")
+                        else:
+                            script_logger.debug(f"Не найдена структура profiles в body")
                         
                         if profiles and isinstance(profiles, list):
                             # Добавляем информацию о коде награды и данных награды к каждому профилю
@@ -2065,22 +2199,88 @@ def convert_reward_json_to_excel(input_json_path, output_excel_path, config_key=
                             
                             total_rewards += 1
                             total_profiles += len(profiles)
-                            logger.debug(LOG_MESSAGES['json_reward_found'].format(key=reward_code, count=len(profiles)))
-                            logger.info(LOG_MESSAGES['reward_profiles_found_old'].format(code=reward_code, count=len(profiles)))
+                            script_logger.debug(LOG_MESSAGES['json_reward_found'].format(key=reward_code, count=len(profiles)))
+                            script_logger.info(LOG_MESSAGES['reward_profiles_found_old'].format(code=reward_code, count=len(profiles)))
+                        else:
+                            script_logger.debug(f"Профили не найдены или не являются списком для {reward_code}")
+                    else:
+                        script_logger.debug(f"Первый элемент не содержит body для {reward_code}")
+                
+                # Обработка словаря старой структуры (когда reward_value - dict, но без ключей новой структуры)
+                elif isinstance(reward_value, dict):
+                    script_logger.debug(f"Обрабатываем старую структуру dict для {reward_code}")
+                    # Возможно, это старая структура в виде словаря
+                    # Ищем профили напрямую в словаре или в подструктурах
+                    profiles = None
+                    badge_info = None
+                    
+                    # Пытаемся найти профили в разных возможных местах
+                    if 'profiles' in reward_value:
+                        profiles = reward_value['profiles']
+                        badge_info = reward_value
+                        script_logger.debug(f"Найдены профили напрямую в {reward_code}: {len(profiles) if profiles else 0}")
+                    elif 'badge' in reward_value and 'profiles' in reward_value['badge']:
+                        profiles = reward_value['badge']['profiles']
+                        badge_info = reward_value['badge']
+                        script_logger.debug(f"Найдены профили в badge для {reward_code}: {len(profiles) if profiles else 0}")
+                    elif 'body' in reward_value and 'badge' in reward_value['body'] and 'profiles' in reward_value['body']['badge']:
+                        profiles = reward_value['body']['badge']['profiles']
+                        badge_info = reward_value['body']['badge']
+                        script_logger.debug(f"Найдены профили в body.badge для {reward_code}: {len(profiles) if profiles else 0}")
+                    
+                    if profiles and isinstance(profiles, list):
+                        # Добавляем информацию о коде награды к каждому профилю
+                        for profile in profiles:
+                            if isinstance(profile, dict):
+                                profile_with_reward = profile.copy()
+                                profile_with_reward['rewardCode'] = reward_code
+                                
+                                # Добавляем информацию о награде
+                                if badge_info:
+                                    profile_with_reward['badgeName'] = badge_info.get('name', '')
+                                    profile_with_reward['badgeDescription'] = badge_info.get('description', '')
+                                    profile_with_reward['badgeType'] = badge_info.get('type', '')
+                                    profile_with_reward['badgeCategory'] = badge_info.get('category', '')
+                                
+                                all_profiles_data.append(profile_with_reward)
+                        
+                        total_rewards += 1
+                        total_profiles += len(profiles)
+                        script_logger.debug(LOG_MESSAGES['json_reward_found'].format(key=reward_code, count=len(profiles)))
+                        script_logger.info(LOG_MESSAGES['reward_profiles_found_old'].format(code=reward_code, count=len(profiles)))
+                    else:
+                        script_logger.debug(f"Профили не найдены в структуре dict для {reward_code}")
+                
+                # Прямая структура данных (профили в корне)
+                elif isinstance(reward_value, list):
+                    # Прямой список профилей
+                    profiles = reward_value
+                    if profiles and isinstance(profiles, list):
+                        # Добавляем информацию о коде награды к каждому профилю
+                        for profile in profiles:
+                            if isinstance(profile, dict):
+                                profile_with_reward = profile.copy()
+                                profile_with_reward['rewardCode'] = reward_code
+                                all_profiles_data.append(profile_with_reward)
+                        
+                        total_rewards += 1
+                        total_profiles += len(profiles)
+                        script_logger.debug(LOG_MESSAGES['json_reward_found'].format(key=reward_code, count=len(profiles)))
+                        script_logger.info(LOG_MESSAGES['reward_profiles_found_old'].format(code=reward_code, count=len(profiles)))
             
-            logger.info(LOG_MESSAGES['rewards_processed'].format(rewards=total_rewards, profiles=total_profiles))
+            script_logger.info(LOG_MESSAGES['rewards_processed'].format(rewards=total_rewards, profiles=total_profiles))
             profiles_data = all_profiles_data
             
         elif isinstance(json_data, list):
             # Прямой список профилей
             profiles_data = json_data
-            logger.info(LOG_MESSAGES['direct_profiles_list'].format(count=len(profiles_data)))
+            script_logger.info(LOG_MESSAGES['direct_profiles_list'].format(count=len(profiles_data)))
         else:
-            logger.error(LOG_MESSAGES['json_invalid_format'])
+            script_logger.error(LOG_MESSAGES['json_invalid_format'])
             return False
         
         if not profiles_data:
-            logger.error(LOG_MESSAGES['no_profiles_error'])
+            script_logger.error(LOG_MESSAGES['no_profiles_error'])
             return False
         
         # Преобразование данных в плоскую структуру
@@ -2096,13 +2296,13 @@ def convert_reward_json_to_excel(input_json_path, output_excel_path, config_key=
             logger.warning(LOG_MESSAGES['no_data_warning'])
             return False
         
-        logger.info(LOG_MESSAGES['json_records_processed'].format(count=len(df)))
+        script_logger.info(LOG_MESSAGES['json_records_processed'].format(count=len(df)))
         
         # Сохранение в Excel
-        return save_excel_file(df, output_excel_path, config_key)
+        return save_excel_file(df, output_excel_path, "reward")
         
     except Exception as e:
-        logger.error(LOG_MESSAGES['json_reward_conversion_error'].format(error=e))
+        script_logger.error(LOG_MESSAGES['json_reward_conversion_error'].format(error=e))
         return False
 
 @measure_time
@@ -2159,15 +2359,15 @@ def convert_json_to_excel(input_json_path, output_excel_path, config_key=None):
         # Если файл содержит "profiles" - используем обработку профилей наград
         if "profiles" in file_name_lower:
             logger.info(LOG_MESSAGES['json_file_processing'].format(file_name=file_name) + " (автоопределение по имени: профили наград)")
-            return convert_reward_profiles_json_to_excel(input_json_path, output_excel_path, config_key)
+            return convert_reward_profiles_json_to_excel(input_json_path, output_excel_path, "reward")
         # Если файл содержит "leaders" - используем обработку лидеров
         elif "leaders" in file_name_lower:
             logger.info(LOG_MESSAGES['json_file_processing'].format(file_name=file_name) + " (автоопределение по имени: лидеры)")
-            return convert_leaders_json_to_excel(input_json_path, output_excel_path, config_key)
+            return convert_leaders_json_to_excel(input_json_path, output_excel_path, "leaders_for_admin")
         else:
             # По умолчанию используем обработку лидеров
             logger.info(LOG_MESSAGES['json_file_processing'].format(file_name=file_name) + " (автоопределение по умолчанию: лидеры)")
-            return convert_leaders_json_to_excel(input_json_path, output_excel_path, config_key)
+            return convert_leaders_json_to_excel(input_json_path, output_excel_path, "leaders_for_admin")
 
 @measure_time
 def convert_specific_json_file(file_name_without_extension, config_key=None):
@@ -2193,10 +2393,12 @@ def convert_specific_json_file(file_name_without_extension, config_key=None):
             
             # Проверяем, есть ли вложенные конфигурации
             if config_key == "reward" and "reward_profiles" in config:
-                excel_file_base = config["reward_profiles"].get("excel_file", file_name_without_extension)
+                reward_profiles_config = config["reward_profiles"]
+                excel_file_base = reward_profiles_config.get("excel_file", file_name_without_extension)
                 selected_variant = config.get("selected_variant", "sigma")
             elif config_key == "leaders_for_admin" and "leaders_processing" in config:
-                excel_file_base = config["leaders_processing"].get("excel_file", file_name_without_extension)
+                leaders_processing_config = config["leaders_processing"]
+                excel_file_base = leaders_processing_config.get("excel_file", file_name_without_extension)
                 selected_variant = config.get("selected_variant", "sigma")
             else:
                 excel_file_base = config.get("excel_file", file_name_without_extension)
@@ -2217,6 +2419,11 @@ def convert_specific_json_file(file_name_without_extension, config_key=None):
         logger.info(LOG_MESSAGES['json_file_processing'].format(file_name=file_name_without_extension))
         logger.info(LOG_MESSAGES['excel_file_creation'].format(filename=excel_filename))
         
+        # Проверяем существование JSON файла
+        if not os.path.exists(input_json_path):
+            logger.error(LOG_MESSAGES['json_file_not_found'].format(file_path=input_json_path))
+            return False
+            
         # Конвертируем файл
         if convert_json_to_excel(input_json_path, output_excel_path, config_key):
             logger.info(LOG_MESSAGES['json_excel_success'].format(file_path=output_excel_path))
@@ -2242,6 +2449,8 @@ def print_summary():
     - Количество выполненных функций
     - Время выполнения каждой функции
     """
+    global program_start_time, processed_actions_count, function_execution_times
+    
     total_time = time.time() - program_start_time
     current_time = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
     
@@ -2251,15 +2460,18 @@ def print_summary():
         f"SUMMARY - {LOG_MESSAGES['summary_stats']}",
         "=" * 70,
         LOG_MESSAGES['total_execution'].format(time=total_time),
-        LOG_MESSAGES['processed_actions'].format(count=processed_actions_count),
-        LOG_MESSAGES['executed_functions'].format(count=len(function_execution_times)),
+        LOG_MESSAGES['processed_actions'].format(count=processed_actions_count or 0),
+        LOG_MESSAGES['executed_functions'].format(count=len(function_execution_times or {})),
         "",
         LOG_MESSAGES['execution_times'],
     ]
     
     # Добавление времени выполнения каждой функции
-    for func_name, exec_time in function_execution_times.items():
-        summary_lines.append(f"  - {func_name}: {exec_time:.4f} сек")
+    if function_execution_times:
+        for func_name, exec_time in function_execution_times.items():
+            summary_lines.append(f"  - {func_name}: {exec_time:.4f} сек")
+    else:
+        summary_lines.append("  - Нет данных о времени выполнения функций")
     
     # Завершающие строки
     summary_lines.extend([
@@ -2272,13 +2484,15 @@ def print_summary():
     summary_text = "\n".join(summary_lines)
     
     # Вывод в консоль и лог
-    logger.info(LOG_MESSAGES['summary_output'].format(summary=summary_text))
-    logger.info(LOG_MESSAGES['summary_title'])
-    logger.info(LOG_MESSAGES['total_time'].format(time=total_time) + f", {LOG_MESSAGES['actions_processed'].format(count=processed_actions_count)}, {LOG_MESSAGES['functions_executed'].format(count=len(function_execution_times))}")
-    
-    # Логирование времени каждой функции
-    for func_name, exec_time in function_execution_times.items():
-        logger.info(LOG_MESSAGES['function_time'].format(func=func_name, time=exec_time))
+    if logger:
+        logger.info(LOG_MESSAGES['summary_output'].format(summary=summary_text))
+        logger.info(LOG_MESSAGES['summary_title'])
+        logger.info(LOG_MESSAGES['total_time'].format(time=total_time) + f", {LOG_MESSAGES['actions_processed'].format(count=processed_actions_count or 0)}, {LOG_MESSAGES['functions_executed'].format(count=len(function_execution_times or {}))}")
+        
+        # Логирование времени каждой функции
+        if function_execution_times:
+            for func_name, exec_time in function_execution_times.items():
+                logger.info(LOG_MESSAGES['function_time'].format(func=func_name, time=exec_time))
 
 # =============================================================================
 # ОСНОВНАЯ ПРОГРАММА
@@ -2302,39 +2516,42 @@ def main():
     # Настройка логирования
     setup_logging()
     
+    # Инициализация основного логгера
+    main_logger = get_script_logger("main", "execution")
+    
     # Стартовое сообщение с разделителями для читаемости
     start_time_str = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
-    logger.info(LOG_MESSAGES['separator_line'])
-    logger.info(LOG_MESSAGES['program_start'].format(time=start_time_str))
-    logger.info(LOG_MESSAGES['processing_start_time'].format(time=start_time_str))
-    logger.info(LOG_MESSAGES['logging_level'].format(level=LOG_LEVEL))
-    logger.info(LOG_MESSAGES['separator_line'])
+    main_logger.info(LOG_MESSAGES['separator_line'])
+    main_logger.info(LOG_MESSAGES['program_start'].format(time=start_time_str))
+    main_logger.info(LOG_MESSAGES['processing_start_time'].format(time=start_time_str))
+    main_logger.info(LOG_MESSAGES['logging_level'].format(level=LOG_LEVEL))
+    main_logger.info(LOG_MESSAGES['separator_line'])
     
     try:
         # Выполнение операций для каждого активного скрипта
-        if ACTIVE_SCRIPTS:
-            logger.info(LOG_MESSAGES['active_scripts_info'].format(scripts=', '.join(ACTIVE_SCRIPTS)))
+        if ACTIVE_SCRIPTS and len(ACTIVE_SCRIPTS) > 0:
+            main_logger.info(f"Активные скрипты: {', '.join(ACTIVE_SCRIPTS)}")
             
             # ПЕРВЫЙ ЭТАП: Генерация всех скриптов
-            logger.info(LOG_MESSAGES['stage1_title'])
+            main_logger.info(LOG_MESSAGES['stage1_title'])
             for script_name in ACTIVE_SCRIPTS:
                 if script_name in FUNCTION_CONFIGS:
                     config = FUNCTION_CONFIGS[script_name]
                     active_operations = config.get("active_operations", "scripts_only")
                     
-                    logger.info(LOG_MESSAGES['script_processing'].format(script_name=script_name))
-                    logger.info(LOG_MESSAGES['active_operations_info'].format(script_name=script_name, operations=active_operations))
+                    main_logger.info(LOG_MESSAGES['script_processing'].format(script_name=script_name))
+                    main_logger.info(LOG_MESSAGES['active_operations_info'].format(script_name=script_name, operations=active_operations))
                     
                     # Генерация скриптов
                     if active_operations in ["scripts_only", "both"]:
-                        logger.info(LOG_MESSAGES['script_generation_info'].format(script_name=script_name))
+                        main_logger.info(LOG_MESSAGES['script_generation_info'].format(script_name=script_name))
                         if script_name == "leaders_for_admin":
                             generate_leaders_for_admin_script()
                         elif script_name == "reward":
                             generate_reward_script()
                         elif script_name == "reward_profiles":
                             # reward_profiles теперь обрабатывается как часть reward
-                            logger.info(LOG_MESSAGES['script_generation_skipped'].format(script_name=script_name, operations="внутри reward"))
+                            main_logger.info(LOG_MESSAGES['script_generation_skipped'].format(script_name=script_name, operations="внутри reward"))
                         elif script_name == "profile":
                             generate_profile_script()
                         elif script_name == "news_details":
@@ -2350,14 +2567,14 @@ def main():
                         elif script_name == "rating_list":
                             generate_rating_list_script()
                         else:
-                            generate_script_universal(script_name)
+                            main_logger.warning(f"Неизвестный скрипт: {script_name}")
                     else:
-                        logger.info(LOG_MESSAGES['script_generation_skipped'].format(script_name=script_name, operations=active_operations))
+                        main_logger.info(LOG_MESSAGES['script_generation_skipped'].format(script_name=script_name, operations=active_operations))
                 else:
-                    logger.error(LOG_MESSAGES['unknown_script_error'].format(script_name=script_name))
+                    main_logger.warning(f"Скрипт '{script_name}' не найден в конфигурации FUNCTION_CONFIGS")
             
-            # ВТОРОЙ ЭТАП: Обработка всех JSON файлов
-            logger.info(LOG_MESSAGES['stage2_title'])
+            # ВТОРОЙ ЭТАП: Обработка всех JSON файлов в Excel
+            main_logger.info(LOG_MESSAGES['stage2_title'])
             for script_name in ACTIVE_SCRIPTS:
                 if script_name in FUNCTION_CONFIGS:
                     config = FUNCTION_CONFIGS[script_name]
@@ -2365,37 +2582,39 @@ def main():
                     
                     # Обработка JSON файлов
                     if active_operations in ["json_only", "both"]:
-                        if "json_file" in config:
-                            json_file = config["json_file"]
-                            logger.info(LOG_MESSAGES['json_file_processing_info'].format(json_file=json_file))
-                            
-                            convert_specific_json_file(json_file, script_name)
-                        elif script_name == "reward" and "reward_profiles" in config:
+                        # Проверяем вложенные конфигурации
+                        if script_name == "reward" and "reward_profiles" in config:
                             # Обработка reward_profiles как части reward
                             reward_profiles_config = config["reward_profiles"]
                             if "json_file" in reward_profiles_config:
                                 json_file = reward_profiles_config["json_file"]
-                                logger.info(LOG_MESSAGES['json_file_processing_info'].format(json_file=json_file))
+                                main_logger.info(LOG_MESSAGES['json_file_processing_info'].format(json_file=json_file))
                                 
-                                convert_specific_json_file(json_file, script_name)
+                                convert_specific_json_file(json_file, "reward_profiles")
                             else:
-                                logger.warning(LOG_MESSAGES['no_json_file_warning'].format(script_name=script_name))
+                                main_logger.warning(f"Для скрипта {script_name} не указан json_file в конфигурации reward_profiles")
                         elif script_name == "leaders_for_admin" and "leaders_processing" in config:
                             # Обработка leaders_processing как части leaders_for_admin
                             leaders_processing_config = config["leaders_processing"]
                             if "json_file" in leaders_processing_config:
                                 json_file = leaders_processing_config["json_file"]
-                                logger.info(LOG_MESSAGES['json_file_processing_info'].format(json_file=json_file))
+                                main_logger.info(LOG_MESSAGES['json_file_processing_info'].format(json_file=json_file))
                                 
                                 convert_specific_json_file(json_file, script_name)
                             else:
-                                logger.warning(LOG_MESSAGES['no_json_file_warning'].format(script_name=script_name))
+                                main_logger.warning(f"Для скрипта {script_name} не указан json_file в конфигурации leaders_processing")
+                        elif "json_file" in config:
+                            # Прямая конфигурация json_file
+                            json_file = config["json_file"]
+                            main_logger.info(LOG_MESSAGES['json_file_processing_info'].format(json_file=json_file))
+                            
+                            convert_specific_json_file(json_file, script_name)
                         else:
-                            logger.warning(LOG_MESSAGES['no_json_file_warning'].format(script_name=script_name))
+                            main_logger.warning(f"Для скрипта {script_name} не указан json_file в конфигурации")
                     else:
-                        logger.info(LOG_MESSAGES['json_processing_skipped'].format(script_name=script_name, operations=active_operations))
+                        main_logger.info(LOG_MESSAGES['json_processing_skipped'].format(script_name=script_name, operations=active_operations))
         else:
-            logger.info(LOG_MESSAGES['no_active_scripts'])
+            main_logger.warning("Нет активных скриптов для обработки. Настройте ACTIVE_SCRIPTS.")
             
         # Альтернативный способ - ручной вызов конкретных функций
         # Раскомментируйте нужные строки для тестирования
@@ -2403,11 +2622,11 @@ def main():
         # generate_profile_script()  # TXT с различными разделителями
         # generate_news_list_script()  # использует переменную согласно конфигурации
         
-        logger.info(LOG_MESSAGES['program_success'])
+        main_logger.info(LOG_MESSAGES['program_success'])
         
     except Exception as e:
         # Обработка критических ошибок
-        logger.error(LOG_MESSAGES['critical_error'].format(error=str(e)))
+        main_logger.error(LOG_MESSAGES['critical_error'].format(error=str(e)))
         
     finally:
         # Вывод итоговой статистики (всегда выполняется)
@@ -2416,10 +2635,10 @@ def main():
         # Финальное сообщение
         end_time_str = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
         total_time = time.time() - program_start_time
-        logger.info(LOG_MESSAGES['separator_line'])
-        logger.info(LOG_MESSAGES['program_end'].format(time=end_time_str))
-        logger.info(LOG_MESSAGES['total_execution_time'].format(time=total_time))
-        logger.info(LOG_MESSAGES['separator_line'])
+        main_logger.info(LOG_MESSAGES['separator_line'])
+        main_logger.info(LOG_MESSAGES['program_end'].format(time=end_time_str))
+        main_logger.info(LOG_MESSAGES['total_execution_time'].format(time=total_time))
+        main_logger.info(LOG_MESSAGES['separator_line'])
 
 # Точка входа в программу
 if __name__ == "__main__":
