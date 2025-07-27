@@ -34,7 +34,7 @@ BASE_DIR = r"/Users/orionflash/Desktop/MyProject/Gen_Load_Game_Script/WORK"
 
 # Настройки логирования
 LOG_LEVEL = "DEBUG"  # Уровень детализации логов: "INFO" - основная информация, "DEBUG" - подробная отладочная информация
-LOG_FILENAME_BASE = "LOG"  # Базовое имя файла лога (к нему добавляется дата и время)
+LOG_FILENAME_BASE = "LOG_2"  # Базовое имя файла лога (к нему добавляется дата и время)
 
 # Имена подпапок (глобально)
 SUBDIRECTORIES = {
@@ -238,6 +238,7 @@ LOG_MESSAGES = {
     "json_file_processing_info": "Обработка JSON файла: {json_file}",  # Ключ: обработка JSON файла
     "no_json_file_warning": "Для скрипта {script_name} не указан json_file",  # Ключ: нет JSON файла
     "json_processing_skipped": "Пропуск обработки JSON для {script_name} (режим: {operations})",  # Ключ: пропуск обработки JSON
+    "excel_creation_error": "Ошибка при создании Excel файла: {error}",  # Ключ: ошибка создания Excel
     "no_active_scripts": "Нет активных скриптов для обработки. Настройте ACTIVE_SCRIPTS.",  # Ключ: нет активных скриптов
     "summary_output": "Итоговая статистика работы программы:\n{summary}",  # Ключ: итоговая статистика
     "reward_profiles_leaders_found": "Найдены лидеры для кода награды {code}: {count} (структура: {structure})",  # Ключ: найдены лидеры наград
@@ -1814,13 +1815,12 @@ def apply_column_settings(df, column_settings):
                     
                     # Конвертируем формат в Python datetime format
                     python_input_format = input_format.replace('DD', '%d').replace('MM', '%m').replace('YY', '%y').replace('YYYY', '%Y')
-                    python_output_format = output_format.replace('DD', '%d').replace('MM', '%m').replace('YY', '%y').replace('YYYY', '%Y')
                     
                     try:
                         # Парсим дату
                         parsed_date = datetime.strptime(str(date_str), python_input_format)
-                        # Форматируем в нужный формат
-                        return parsed_date.strftime(python_output_format)
+                        # Возвращаем объект datetime для правильного форматирования в Excel
+                        return parsed_date
                     except:
                         return str(date_str)  # Возвращаем исходное значение если не удалось преобразовать
                 
@@ -1851,6 +1851,112 @@ def apply_column_settings(df, column_settings):
         df_result = df_result.drop(columns=columns_to_drop)
     
     return df_result
+
+def apply_cell_formatting(workbook, df, config_key=None):
+    """
+    Применение форматирования ячеек в Excel
+    
+    Args:
+        workbook: Объект рабочей книги Excel
+        df (DataFrame): DataFrame с данными
+        config_key (str, optional): Ключ конфигурации для получения настроек
+    """
+    from openpyxl.styles import NamedStyle
+    from openpyxl.utils import get_column_letter
+    
+    try:
+        # Получаем настройки форматирования из конфигурации
+        column_settings = {}
+        if config_key and config_key in FUNCTION_CONFIGS:
+            config = FUNCTION_CONFIGS[config_key]
+            if config_key == "reward" and "reward_profiles" in config:
+                column_settings = config["reward_profiles"].get("column_settings", {})
+            elif config_key == "leaders_for_admin" and "leaders_processing" in config:
+                column_settings = config["leaders_processing"].get("column_settings", {})
+        
+        if not column_settings:
+            return
+        
+        # Получаем лист DATA
+        worksheet = workbook['DATA']
+        
+        # Создаем стили для форматирования
+        number_style = NamedStyle(name="number_style")
+        number_style.number_format = '#,##0'
+        
+        float_style = NamedStyle(name="float_style")
+        float_style.number_format = '#,##0.00'
+        
+        date_style = NamedStyle(name="date_style")
+        date_style.number_format = 'YYYY-MM-DD'
+        
+        # Применяем форматирование к числовым колонкам
+        numeric_conversions = column_settings.get('numeric_conversions', {})
+        for column, settings in numeric_conversions.items():
+            if column in df.columns:
+                col_idx = df.columns.get_loc(column) + 1  # +1 потому что Excel начинается с 1
+                col_letter = get_column_letter(col_idx)
+                
+                conversion_type = settings.get('type', 'integer')
+                if conversion_type == 'integer':
+                    # Применяем целочисленный формат
+                    for row in range(2, len(df) + 2):  # +2 потому что Excel начинается с 1 и есть заголовок
+                        cell = worksheet[f'{col_letter}{row}']
+                        cell.style = number_style
+                elif conversion_type == 'float':
+                    # Применяем дробный формат
+                    decimal_places = settings.get('decimal_places', 2)
+                    float_style.number_format = f'#,##0.{"0" * decimal_places}'
+                    for row in range(2, len(df) + 2):
+                        cell = worksheet[f'{col_letter}{row}']
+                        cell.style = float_style
+        
+        # Применяем форматирование к датам
+        date_conversions = column_settings.get('date_conversions', {})
+        for column, settings in date_conversions.items():
+            if column in df.columns:
+                col_idx = df.columns.get_loc(column) + 1
+                col_letter = get_column_letter(col_idx)
+                
+                # Применяем формат даты
+                for row in range(2, len(df) + 2):
+                    cell = worksheet[f'{col_letter}{row}']
+                    cell.style = date_style
+        
+        # Применяем форматирование к новым колонкам (с суффиксами)
+        for column in df.columns:
+            if column.endswith('_numeric'):
+                col_idx = df.columns.get_loc(column) + 1
+                col_letter = get_column_letter(col_idx)
+                
+                # Определяем тип по исходной колонке
+                original_column = column.replace('_numeric', '')
+                if original_column in numeric_conversions:
+                    settings = numeric_conversions[original_column]
+                    conversion_type = settings.get('type', 'integer')
+                    
+                    if conversion_type == 'integer':
+                        for row in range(2, len(df) + 2):
+                            cell = worksheet[f'{col_letter}{row}']
+                            cell.style = number_style
+                    elif conversion_type == 'float':
+                        decimal_places = settings.get('decimal_places', 2)
+                        float_style.number_format = f'#,##0.{"0" * decimal_places}'
+                        for row in range(2, len(df) + 2):
+                            cell = worksheet[f'{col_letter}{row}']
+                            cell.style = float_style
+            
+            elif column.endswith('_formatted'):
+                col_idx = df.columns.get_loc(column) + 1
+                col_letter = get_column_letter(col_idx)
+                
+                # Применяем формат даты к отформатированным колонкам
+                for row in range(2, len(df) + 2):
+                    cell = worksheet[f'{col_letter}{row}']
+                    cell.style = date_style
+                    
+    except Exception as e:
+        logger.warning(f"Ошибка при применении форматирования ячеек: {e}")
 
 def save_excel_file(df, output_excel_path, config_key=None):
     """
@@ -1893,6 +1999,9 @@ def save_excel_file(df, output_excel_path, config_key=None):
             
             # Применяем стили с настройками закрепления
             apply_excel_styling(workbook, freeze_cell)
+            
+            # Применяем форматирование ячеек
+            apply_cell_formatting(workbook, df, config_key)
             
             # Создание дополнительных листов
             create_summary_sheet(workbook, df)
