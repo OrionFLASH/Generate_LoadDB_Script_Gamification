@@ -188,6 +188,12 @@ LOG_MESSAGES = {
     "json_records_processed": "Обработано {count} записей",  # Ключ: количество обработанных записей
     "json_excel_creation": "Создаем Excel файл...",  # Ключ: создание Excel файла
     "json_excel_success": "Excel файл успешно создан: {file_path}",  # Ключ: Excel файл создан
+    
+    # Сообщения о настройках колонок
+    "column_settings_applying": "Применяем настройки колонок к DataFrame",  # Ключ: применение настроек колонок
+    "column_settings_applied": "После применения настроек: {count} колонок",  # Ключ: результат применения настроек
+    "column_settings_applying_leaders": "Применяем настройки колонок к DataFrame для leaders",  # Ключ: применение настроек для лидеров
+    "no_active_scripts": "Нет активных скриптов для обработки. Настройте ACTIVE_SCRIPTS.",  # Ключ: нет активных скриптов
     "json_conversion_error": "Ошибка при конвертации JSON: {error}",  # Ключ: ошибка конвертации JSON
     "json_file_processing": "Обработка JSON файла: {file_name}",  # Ключ: обработка конкретного JSON файла
     "json_files_processed": "Обработано JSON файлов: {count}",  # Ключ: количество обработанных JSON файлов
@@ -288,7 +294,50 @@ FUNCTION_CONFIGS = {
             "excel_freeze_row": 1,  # Ключ: номер строки для закрепления в Excel (1 = заголовок)
             "json_file": "leadersForAdmin_SIGMA_20250727-130522",  # Ключ: имя JSON файла для обработки (без расширения)
             "excel_file": "LeadersForAdmin",  # Ключ: имя Excel файла для создания (без расширения)
-            "excel_freeze_cell": "B2"  # Ключ: ячейка для закрепления в Excel (B2 = первая строка и первая колонка)
+            "excel_freeze_cell": "B2",  # Ключ: ячейка для закрепления в Excel (B2 = первая строка и первая колонка)
+            "column_settings": {  # Ключ: настройки обработки колонок
+                "columns_to_keep": [],  # Ключ: колонки для сохранения (если пусто - оставляем все)
+                "columns_to_remove": [  # Ключ: колонки для удаления
+                ],
+                "numeric_conversions": {  # Ключ: преобразования в числовой формат
+                    "indicatorValue": {
+                        "type": "float",  # Ключ: тип числа ("integer" или "float")
+                        "decimal_places": 2,  # Ключ: количество знаков после запятой
+                        "replace_original": False  # Ключ: заменить исходное поле (True) или создать новое (False)
+                    },
+                    "successValue": {
+                        "type": "float",  # Ключ: тип числа ("integer" или "float")
+                        "decimal_places": 2,  # Ключ: количество знаков после запятой
+                        "replace_original": False  # Ключ: заменить исходное поле (True) или создать новое (False)
+                    },
+                    "BANK_groupId": {
+                        "type": "integer",  # Ключ: тип числа ("integer" или "float")
+                        "replace_original": True  # Ключ: заменить исходное поле (True) или создать новое (False)
+                    },
+                    "TB_groupId": {
+                        "type": "integer",  # Ключ: тип числа ("integer" или "float")
+                        "replace_original": True  # Ключ: заменить исходное поле (True) или создать новое (False)
+                    },
+                    "GOSB_groupId": {
+                        "type": "integer",  # Ключ: тип числа ("integer" или "float")
+                        "replace_original": True  # Ключ: заменить исходное поле (True) или создать новое (False)
+                    },
+                    "BANK_placeInRating": {
+                        "type": "integer",  # Ключ: тип числа ("integer" или "float")
+                        "replace_original": True  # Ключ: заменить исходное поле (True) или создать новое (False)
+                    },
+                    "TB_placeInRating": {
+                        "type": "integer",  # Ключ: тип числа ("integer" или "float")
+                        "replace_original": True  # Ключ: заменить исходное поле (True) или создать новое (False)
+                    },
+                    "GOSB_placeInRating": {
+                        "type": "integer",  # Ключ: тип числа ("integer" или "float")
+                        "replace_original": True  # Ключ: заменить исходное поле (True) или создать новое (False)
+                    }
+                },
+                "date_conversions": {  # Ключ: преобразования в формат даты (пока нет полей с датами в leaders)
+                }
+            }
         }
     },
     "reward": {  # Ключ: конфигурация для скрипта REWARD (выгрузка профилей участников по кодам наград)
@@ -342,7 +391,31 @@ FUNCTION_CONFIGS = {
             "excel_freeze_row": 1,  # Ключ: номер строки для закрепления в Excel (1 = заголовок)
             "json_file": "profiles_SIGMA_20250727-130833",  # Ключ: имя JSON файла для обработки (без расширения)
             "excel_file": "RewardProfiles",  # Ключ: имя Excel файла для создания (без расширения)
-            "excel_freeze_cell": "F2"  # Ключ: ячейка для закрепления в Excel (B2 = первая строка и первая колонка)
+            "excel_freeze_cell": "F2",  # Ключ: ячейка для закрепления в Excel (B2 = первая строка и первая колонка)
+            "column_settings": {  # Ключ: настройки обработки колонок
+                "columns_to_keep": [],  # Ключ: колонки для сохранения (если пусто - оставляем все)
+                "columns_to_remove": [  # Ключ: колонки для удаления
+                    "isMarked", "colorPrimary", "colorSecondary",
+                    "tag1_id", "tag1_name", "tag1_color",
+                    "tag2_id", "tag2_name", "tag2_color", 
+                    "tag3_id", "tag3_name", "tag3_color",
+                    "tag4_id", "tag4_name", "tag4_color",
+                    "tag5_id", "tag5_name", "tag5_color"
+                ],
+                "numeric_conversions": {  # Ключ: преобразования в числовой формат
+                    "gosbCode": {
+                        "type": "integer",  # Ключ: тип числа ("integer" или "float")
+                        "replace_original": True  # Ключ: заменить исходное поле (True) или создать новое (False)
+                    }
+                },
+                "date_conversions": {  # Ключ: преобразования в формат даты
+                    "receivingDate": {
+                        "input_format": "DD.MM.YY",  # Ключ: входной формат даты
+                        "output_format": "YYYY-MM-DD",  # Ключ: выходной формат даты
+                        "replace_original": False  # Ключ: заменить исходное поле (True) или создать новое (False)
+                    }
+                }
+            }
         }
     },
     "profile": {  # Ключ: конфигурация для скрипта PROFILE (профили сотрудников)
@@ -858,10 +931,6 @@ def flatten_leader_data(leader_data):
     # Создаем полное имя
     flattened['fullName'] = f"{leader_data.get('lastName', '')} {leader_data.get('firstName', '')}".strip()
     
-    # Парсим числовые значения
-    flattened['indicatorValue_parsed'] = parse_float_safe(leader_data.get('indicatorValue', 0), f"indicatorValue for {flattened['fullName']}")
-    flattened['successValue_parsed'] = parse_float_safe(leader_data.get('successValue', 0), f"successValue for {flattened['fullName']}")
-    
     # Обработка вложенной структуры divisionRatings
     division_ratings = leader_data.get('divisionRatings', [])
     
@@ -954,11 +1023,6 @@ def flatten_reward_profile_data(profile_data):
     if not flattened['fullName']:
         name_parts = [flattened['lastName'], flattened['firstName'], flattened['middleName']]
         flattened['fullName'] = ' '.join([part for part in name_parts if part]).strip()
-    
-    # Парсим числовые значения
-    flattened['indicatorValue_parsed'] = parse_float_safe(profile_data.get('indicatorValue', 0), f"indicatorValue for {flattened['fullName']}")
-    flattened['successValue_parsed'] = parse_float_safe(profile_data.get('successValue', 0), f"successValue for {flattened['fullName']}")
-    flattened['awardValue_parsed'] = parse_float_safe(profile_data.get('awardValue', 0), f"awardValue for {flattened['fullName']}")
     
     # Обработка вложенных структур (если есть)
     if 'divisionRatings' in profile_data:
@@ -1108,9 +1172,9 @@ def create_summary_sheet(workbook, data_df):
         ['Общее количество участников', len(data_df)],
         ['Участники с номером сотрудника', len(data_df[data_df['employeeNumber'].notna() & (data_df['employeeNumber'] != '')])],
         ['Участники со статусом CONTESTANT', len(data_df[data_df['employeeStatus'] == 'CONTESTANT'])],
-        ['Среднее значение показателя', round(data_df['indicatorValue_parsed'].mean(), 2) if 'indicatorValue_parsed' in data_df.columns else 'N/A'],
-        ['Максимальное значение показателя', data_df['indicatorValue_parsed'].max() if 'indicatorValue_parsed' in data_df.columns else 'N/A'],
-        ['Минимальное значение показателя', data_df['indicatorValue_parsed'].min() if 'indicatorValue_parsed' in data_df.columns else 'N/A'],
+        ['Среднее значение показателя', round(data_df['indicatorValue_numeric'].mean(), 2) if 'indicatorValue_numeric' in data_df.columns else 'N/A'],
+        ['Максимальное значение показателя', data_df['indicatorValue_numeric'].max() if 'indicatorValue_numeric' in data_df.columns else 'N/A'],
+        ['Минимальное значение показателя', data_df['indicatorValue_numeric'].min() if 'indicatorValue_numeric' in data_df.columns else 'N/A'],
     ]
     
     # Добавляем данные в лист
@@ -1690,6 +1754,104 @@ def load_json_data(input_json_path):
         logger.error(LOG_MESSAGES['json_load_error'].format(file_path=input_json_path, error=e))
         return None
 
+def apply_column_settings(df, column_settings):
+    """
+    Применение настроек колонок к DataFrame
+    
+    Args:
+        df (pd.DataFrame): DataFrame для обработки
+        column_settings (dict): Настройки колонок
+        
+    Returns:
+        pd.DataFrame: Обработанный DataFrame
+    """
+    import pandas as pd
+    from datetime import datetime
+    import re
+    
+    df_result = df.copy()
+    
+    # 1. Применяем преобразования типов данных перед фильтрацией колонок
+    
+    # Преобразования в числовой формат
+    numeric_conversions = column_settings.get('numeric_conversions', {})
+    for column, settings in numeric_conversions.items():
+        if column in df_result.columns:
+            conversion_type = settings.get('type', 'integer')
+            replace_original = settings.get('replace_original', True)
+            
+            try:
+                if conversion_type == 'integer':
+                    # Преобразуем в целое число
+                    new_values = pd.to_numeric(df_result[column], errors='coerce').fillna(0).astype(int)
+                elif conversion_type == 'float':
+                    # Преобразуем в дробное число
+                    decimal_places = settings.get('decimal_places', 2)
+                    new_values = pd.to_numeric(df_result[column], errors='coerce').fillna(0.0)
+                    new_values = new_values.round(decimal_places)
+                
+                if replace_original:
+                    df_result[column] = new_values
+                else:
+                    new_column_name = f"{column}_numeric"
+                    df_result[new_column_name] = new_values
+                    
+            except Exception as e:
+                logger.warning(f"Ошибка преобразования колонки {column} в числовой формат: {e}")
+    
+    # Преобразования дат
+    date_conversions = column_settings.get('date_conversions', {})
+    for column, settings in date_conversions.items():
+        if column in df_result.columns:
+            input_format = settings.get('input_format', 'DD.MM.YY')
+            output_format = settings.get('output_format', 'YYYY-MM-DD')
+            replace_original = settings.get('replace_original', True)
+            
+            try:
+                def convert_date(date_str):
+                    if pd.isna(date_str) or date_str == '':
+                        return ''
+                    
+                    # Конвертируем формат в Python datetime format
+                    python_input_format = input_format.replace('DD', '%d').replace('MM', '%m').replace('YY', '%y').replace('YYYY', '%Y')
+                    python_output_format = output_format.replace('DD', '%d').replace('MM', '%m').replace('YY', '%y').replace('YYYY', '%Y')
+                    
+                    try:
+                        # Парсим дату
+                        parsed_date = datetime.strptime(str(date_str), python_input_format)
+                        # Форматируем в нужный формат
+                        return parsed_date.strftime(python_output_format)
+                    except:
+                        return str(date_str)  # Возвращаем исходное значение если не удалось преобразовать
+                
+                new_values = df_result[column].apply(convert_date)
+                
+                if replace_original:
+                    df_result[column] = new_values
+                else:
+                    new_column_name = f"{column}_formatted"
+                    df_result[new_column_name] = new_values
+                    
+            except Exception as e:
+                logger.warning(f"Ошибка преобразования колонки {column} в формат даты: {e}")
+    
+    # 2. Фильтрация колонок
+    columns_to_keep = column_settings.get('columns_to_keep', [])
+    columns_to_remove = column_settings.get('columns_to_remove', [])
+    
+    # Если указаны колонки для сохранения, оставляем только их
+    if columns_to_keep:
+        # Оставляем только указанные колонки (если они существуют)
+        existing_columns_to_keep = [col for col in columns_to_keep if col in df_result.columns]
+        df_result = df_result[existing_columns_to_keep]
+    
+    # Удаляем ненужные колонки
+    if columns_to_remove:
+        columns_to_drop = [col for col in columns_to_remove if col in df_result.columns]
+        df_result = df_result.drop(columns=columns_to_drop)
+    
+    return df_result
+
 def save_excel_file(df, output_excel_path, config_key=None):
     """
     Общая функция для сохранения DataFrame в Excel с применением стилей
@@ -1836,6 +1998,15 @@ def convert_leaders_json_to_excel(input_json_path, output_excel_path, config_key
             return False
         
         logger.info(LOG_MESSAGES['json_records_processed'].format(count=len(df)))
+        
+        # Применение настроек колонок
+        if config_key == "leaders_for_admin" and "leaders_for_admin" in FUNCTION_CONFIGS:
+            config = FUNCTION_CONFIGS["leaders_for_admin"]
+            if "leaders_processing" in config and "column_settings" in config["leaders_processing"]:
+                column_settings = config["leaders_processing"]["column_settings"]
+                logger.info(LOG_MESSAGES['column_settings_applying_leaders'])
+                df = apply_column_settings(df, column_settings)
+                logger.info(LOG_MESSAGES['column_settings_applied'].format(count=len(df.columns)))
         
         # Сохранение в Excel
         return save_excel_file(df, output_excel_path, "leaders_for_admin")
@@ -2006,6 +2177,15 @@ def convert_reward_profiles_json_to_excel(input_json_path, output_excel_path, co
             return False
         
         logger.info(LOG_MESSAGES['json_records_processed'].format(count=len(df)))
+        
+        # Применение настроек колонок
+        if config_key == "reward" and "reward" in FUNCTION_CONFIGS:
+            config = FUNCTION_CONFIGS["reward"]
+            if "reward_profiles" in config and "column_settings" in config["reward_profiles"]:
+                column_settings = config["reward_profiles"]["column_settings"]
+                logger.info(LOG_MESSAGES['column_settings_applying'])
+                df = apply_column_settings(df, column_settings)
+                logger.info(LOG_MESSAGES['column_settings_applied'].format(count=len(df.columns)))
         
         # Сохранение в Excel
         return save_excel_file(df, output_excel_path, "reward")
@@ -2614,7 +2794,7 @@ def main():
                     else:
                         main_logger.info(LOG_MESSAGES['json_processing_skipped'].format(script_name=script_name, operations=active_operations))
         else:
-            main_logger.warning("Нет активных скриптов для обработки. Настройте ACTIVE_SCRIPTS.")
+            main_logger.warning(LOG_MESSAGES['no_active_scripts'])
             
         # Альтернативный способ - ручной вызов конкретных функций
         # Раскомментируйте нужные строки для тестирования
