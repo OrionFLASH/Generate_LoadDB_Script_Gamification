@@ -243,6 +243,9 @@ LOG_MESSAGES = {
     "column_conversion_start": "Начинаем преобразование колонки {column} в тип {type}",  # Ключ: начало преобразования колонки
     "column_conversion_success": "Успешно преобразована колонка {column} в тип {type} ({action})",  # Ключ: успешное преобразование колонки
     "column_conversion_failed": "Ошибка преобразования колонки {column} в тип {type}: {error}",  # Ключ: ошибка преобразования колонки
+    "group_conversion_start": "Начинаем преобразование группы {group} в тип {type} для полей: {fields}",  # Ключ: начало преобразования группы
+    "group_conversion_completed": "Завершено преобразование группы {group}, обработано полей: {processed}",  # Ключ: завершение преобразования группы
+    "column_not_found": "Колонка {column} не найдена в группе {group}",  # Ключ: колонка не найдена
     "columns_filtered": "{action} {count} колонок: {columns}",  # Ключ: фильтрация колонок
     "no_active_scripts": "Нет активных скриптов для обработки. Настройте ACTIVE_SCRIPTS.",  # Ключ: нет активных скриптов
     "summary_output": "Итоговая статистика работы программы:\n{summary}",  # Ключ: итоговая статистика
@@ -306,37 +309,14 @@ FUNCTION_CONFIGS = {
                 "columns_to_remove": [  # Ключ: колонки для удаления
                 ],
                 "numeric_conversions": {  # Ключ: преобразования в числовой формат
-                    "indicatorValue": {
+                    "float_fields": {  # Ключ: группа полей для преобразования в дробные числа
+                        "fields": ["indicatorValue", "successValue"],  # Ключ: массив полей для преобразования
                         "type": "float",  # Ключ: тип числа ("integer" или "float")
                         "decimal_places": 2,  # Ключ: количество знаков после запятой
                         "replace_original": False  # Ключ: заменить исходное поле (True) или создать новое (False)
                     },
-                    "successValue": {
-                        "type": "float",  # Ключ: тип числа ("integer" или "float")
-                        "decimal_places": 2,  # Ключ: количество знаков после запятой
-                        "replace_original": False  # Ключ: заменить исходное поле (True) или создать новое (False)
-                    },
-                    "BANK_groupId": {
-                        "type": "integer",  # Ключ: тип числа ("integer" или "float")
-                        "replace_original": True  # Ключ: заменить исходное поле (True) или создать новое (False)
-                    },
-                    "TB_groupId": {
-                        "type": "integer",  # Ключ: тип числа ("integer" или "float")
-                        "replace_original": True  # Ключ: заменить исходное поле (True) или создать новое (False)
-                    },
-                    "GOSB_groupId": {
-                        "type": "integer",  # Ключ: тип числа ("integer" или "float")
-                        "replace_original": True  # Ключ: заменить исходное поле (True) или создать новое (False)
-                    },
-                    "BANK_placeInRating": {
-                        "type": "integer",  # Ключ: тип числа ("integer" или "float")
-                        "replace_original": True  # Ключ: заменить исходное поле (True) или создать новое (False)
-                    },
-                    "TB_placeInRating": {
-                        "type": "integer",  # Ключ: тип числа ("integer" или "float")
-                        "replace_original": True  # Ключ: заменить исходное поле (True) или создать новое (False)
-                    },
-                    "GOSB_placeInRating": {
+                    "integer_fields": {  # Ключ: группа полей для преобразования в целые числа
+                        "fields": ["BANK_groupId", "TB_groupId", "GOSB_groupId", "BANK_placeInRating", "TB_placeInRating", "GOSB_placeInRating"],  # Ключ: массив полей для преобразования
                         "type": "integer",  # Ключ: тип числа ("integer" или "float")
                         "replace_original": True  # Ключ: заменить исходное поле (True) или создать новое (False)
                     }
@@ -409,7 +389,8 @@ FUNCTION_CONFIGS = {
                     "tag5_id", "tag5_name", "tag5_color"
                 ],
                 "numeric_conversions": {  # Ключ: преобразования в числовой формат
-                    "gosbCode": {
+                    "integer_fields": {  # Ключ: группа полей для преобразования в целые числа
+                        "fields": ["gosbCode"],  # Ключ: массив полей для преобразования
                         "type": "integer",  # Ключ: тип числа ("integer" или "float")
                         "replace_original": True  # Ключ: заменить исходное поле (True) или создать новое (False)
                     }
@@ -1911,47 +1892,65 @@ def apply_column_settings(df, column_settings):
     
     # Преобразования в числовой формат
     numeric_conversions = column_settings.get('numeric_conversions', {})
-    for column, settings in numeric_conversions.items():
-        if column in df_result.columns:
-            conversion_type = settings.get('type', 'integer')
-            replace_original = settings.get('replace_original', True)
-            
-            try:
-                logger.info(LOG_MESSAGES['column_conversion_start'].format(
-                    column=column, 
-                    type=conversion_type
-                ))
-                
-                if conversion_type == 'integer':
-                    # Преобразуем в целое число
-                    new_values = df_result[column].apply(lambda x: convert_to_integer(x, column))
-                elif conversion_type == 'float':
-                    # Преобразуем в дробное число
-                    decimal_places = settings.get('decimal_places', 2)
-                    new_values = df_result[column].apply(lambda x: convert_to_float(x, decimal_places, column))
-                
-                if replace_original:
-                    df_result[column] = new_values
-                    logger.info(LOG_MESSAGES['column_conversion_success'].format(
+    for group_name, group_settings in numeric_conversions.items():
+        fields = group_settings.get('fields', [])
+        conversion_type = group_settings.get('type', 'integer')
+        replace_original = group_settings.get('replace_original', True)
+        decimal_places = group_settings.get('decimal_places', 2)
+        
+        logger.info(LOG_MESSAGES['group_conversion_start'].format(
+            group=group_name, 
+            type=conversion_type,
+            fields=fields
+        ))
+        
+        for column in fields:
+            if column in df_result.columns:
+                try:
+                    logger.info(LOG_MESSAGES['column_conversion_start'].format(
                         column=column, 
-                        type=conversion_type, 
-                        action="заменено"
-                    ))
-                else:
-                    new_column_name = f"{column}_numeric"
-                    df_result[new_column_name] = new_values
-                    logger.info(LOG_MESSAGES['column_conversion_success'].format(
-                        column=column, 
-                        type=conversion_type, 
-                        action=f"создано новое поле {new_column_name}"
+                        type=conversion_type
                     ))
                     
-            except Exception as e:
-                logger.error(LOG_MESSAGES['column_conversion_failed'].format(
-                    column=column, 
-                    type=conversion_type, 
-                    error=str(e)
+                    if conversion_type == 'integer':
+                        # Преобразуем в целое число
+                        new_values = df_result[column].apply(lambda x: convert_to_integer(x, column))
+                    elif conversion_type == 'float':
+                        # Преобразуем в дробное число
+                        new_values = df_result[column].apply(lambda x: convert_to_float(x, decimal_places, column))
+                    
+                    if replace_original:
+                        df_result[column] = new_values
+                        logger.info(LOG_MESSAGES['column_conversion_success'].format(
+                            column=column, 
+                            type=conversion_type, 
+                            action="заменено"
+                        ))
+                    else:
+                        new_column_name = f"{column}_numeric"
+                        df_result[new_column_name] = new_values
+                        logger.info(LOG_MESSAGES['column_conversion_success'].format(
+                            column=column, 
+                            type=conversion_type, 
+                            action=f"создано новое поле {new_column_name}"
+                        ))
+                        
+                except Exception as e:
+                    logger.error(LOG_MESSAGES['column_conversion_failed'].format(
+                        column=column, 
+                        type=conversion_type, 
+                        error=str(e)
+                    ))
+            else:
+                logger.warning(LOG_MESSAGES['column_not_found'].format(
+                    column=column,
+                    group=group_name
                 ))
+        
+        logger.info(LOG_MESSAGES['group_conversion_completed'].format(
+            group=group_name,
+            processed=len([col for col in fields if col in df_result.columns])
+        ))
     
     # Преобразования дат
     date_conversions = column_settings.get('date_conversions', {})
@@ -2058,24 +2057,27 @@ def apply_cell_formatting(workbook, df, config_key=None):
         
         # Применяем форматирование к числовым колонкам
         numeric_conversions = column_settings.get('numeric_conversions', {})
-        for column, settings in numeric_conversions.items():
-            if column in df.columns:
-                col_idx = df.columns.get_loc(column) + 1  # +1 потому что Excel начинается с 1
-                col_letter = get_column_letter(col_idx)
-                
-                conversion_type = settings.get('type', 'integer')
-                if conversion_type == 'integer':
-                    # Применяем целочисленный формат
-                    for row in range(2, len(df) + 2):  # +2 потому что Excel начинается с 1 и есть заголовок
-                        cell = worksheet[f'{col_letter}{row}']
-                        cell.style = number_style
-                elif conversion_type == 'float':
-                    # Применяем дробный формат
-                    decimal_places = settings.get('decimal_places', 2)
-                    float_style.number_format = f'#,##0.{"0" * decimal_places}'
-                    for row in range(2, len(df) + 2):
-                        cell = worksheet[f'{col_letter}{row}']
-                        cell.style = float_style
+        for group_name, group_settings in numeric_conversions.items():
+            fields = group_settings.get('fields', [])
+            conversion_type = group_settings.get('type', 'integer')
+            decimal_places = group_settings.get('decimal_places', 2)
+            
+            for column in fields:
+                if column in df.columns:
+                    col_idx = df.columns.get_loc(column) + 1  # +1 потому что Excel начинается с 1
+                    col_letter = get_column_letter(col_idx)
+                    
+                    if conversion_type == 'integer':
+                        # Применяем целочисленный формат
+                        for row in range(2, len(df) + 2):  # +2 потому что Excel начинается с 1 и есть заголовок
+                            cell = worksheet[f'{col_letter}{row}']
+                            cell.style = number_style
+                    elif conversion_type == 'float':
+                        # Применяем дробный формат
+                        float_style.number_format = f'#,##0.{"0" * decimal_places}'
+                        for row in range(2, len(df) + 2):
+                            cell = worksheet[f'{col_letter}{row}']
+                            cell.style = float_style
         
         # Применяем форматирование к датам
         date_conversions = column_settings.get('date_conversions', {})
@@ -2097,17 +2099,25 @@ def apply_cell_formatting(workbook, df, config_key=None):
                 
                 # Определяем тип по исходной колонке
                 original_column = column.replace('_numeric', '')
-                if original_column in numeric_conversions:
-                    settings = numeric_conversions[original_column]
-                    conversion_type = settings.get('type', 'integer')
-                    
-                    if conversion_type == 'integer':
+                
+                # Ищем исходную колонку в группах
+                found_conversion_type = None
+                found_decimal_places = 2
+                
+                for group_name, group_settings in numeric_conversions.items():
+                    fields = group_settings.get('fields', [])
+                    if original_column in fields:
+                        found_conversion_type = group_settings.get('type', 'integer')
+                        found_decimal_places = group_settings.get('decimal_places', 2)
+                        break
+                
+                if found_conversion_type:
+                    if found_conversion_type == 'integer':
                         for row in range(2, len(df) + 2):
                             cell = worksheet[f'{col_letter}{row}']
                             cell.style = number_style
-                    elif conversion_type == 'float':
-                        decimal_places = settings.get('decimal_places', 2)
-                        float_style.number_format = f'#,##0.{"0" * decimal_places}'
+                    elif found_conversion_type == 'float':
+                        float_style.number_format = f'#,##0.{"0" * found_decimal_places}'
                         for row in range(2, len(df) + 2):
                             cell = worksheet[f'{col_letter}{row}']
                             cell.style = float_style
