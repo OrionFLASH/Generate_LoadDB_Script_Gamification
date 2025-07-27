@@ -186,8 +186,9 @@ LOG_MESSAGES = {
     "json_invalid_format": "Неверный формат JSON данных",  # Ключ: неверный формат JSON
     "json_no_leaders": "Не найдены данные лидеров в JSON файле",  # Ключ: нет данных лидеров
     "json_records_processed": "Обработано {count} записей",  # Ключ: количество обработанных записей
-    "json_excel_creation": "Создаем Excel файл...",  # Ключ: создание Excel файла
-    "json_excel_success": "Excel файл успешно создан: {file_path}",  # Ключ: Excel файл создан
+    "json_excel_creation": "Создаем Excel файл: {filename} ({rows} строк, {cols} столбцов)",  # Ключ: создание Excel файла с деталями
+    "json_excel_processing_info": "Обработка данных: {rows} строк × {cols} столбцов (примерное время: {estimated_time})",  # Ключ: информация о времени обработки
+    "json_excel_success": "Excel файл успешно создан: {file_path} (размер: {size})",  # Ключ: Excel файл создан с размером
     
     # Сообщения о настройках колонок
     "column_settings_applying": "Применяем настройки колонок к DataFrame",  # Ключ: применение настроек колонок
@@ -305,22 +306,23 @@ FUNCTION_CONFIGS = {
             "include_division_ratings": True,  # Ключ: включать ли рейтинги подразделений
             "include_tournament_info": True  # Ключ: включать ли информацию о турнирах
         },
-        "data_source": "external_file",  # Ключ: источник данных (file/variable/external_file)
+        "data_source": "external_file",  # Ключ: источник данных (external_file/variable)
         "input_format": "CSV",  # Ключ: формат входного файла
         "csv_column": "TOURNAMENT_CODE",  # Ключ: название столбца для извлечения данных
         "csv_delimiter": ";",  # Ключ: разделитель в CSV файле
         "csv_encoding": "utf-8",  # Ключ: кодировка CSV файла
         "input_file": "TOURNAMENT-SCHEDULE (PROM) 2025-07-25 v6",  # Ключ: имя входного файла (без расширения)
         "test_data": [  # Ключ: тестовые данные для работы без внешнего файла
-            "test_tournament_1",  # Тестовый турнир 1
-            "test_tournament_2",  # Тестовый турнир 2
-            "test_tournament_3"   # Тестовый турнир 3
+            "t_04_2025-0_15-2_1_2021",  # Тестовый турнир 1
+            "t_01_2025-1_05-1_2t_3061",  # Тестовый турнир 2
+            "t_01_2025-1_04-1_1_4001",   # Тестовый турнир 3
+            "t_01_2025-1_05-1_2t_3051"
         ],
         "leaders_processing": {  # Ключ: конфигурация для обработки лидеров турниров (JSON → Excel)
             "name": "Leaders Processing",  # Ключ: название скрипта для отображения
             "description": "Обработка лидеров турниров из JSON в Excel",  # Ключ: описание назначения скрипта
             "active_operations": "json_only",  # Ключ: активные операции ("scripts_only", "json_only", "both")
-            "json_file": "leadersForAdmin_SIGMA_20250728-001537",  # Ключ: имя JSON файла для обработки (без расширения)
+            "json_file": "leadersForAdmin_SIGMA_20250728-013758",  # Ключ: имя JSON файла для обработки (без расширения)
             "excel_file": "LeadersForAdmin",  # Ключ: имя Excel файла для создания (без расширения)
             "excel_freeze_cell": "B2",  # Ключ: ячейка для закрепления в Excel (B2 = первая строка и первая колонка)
             "column_settings": {  # Ключ: настройки обработки колонок
@@ -371,16 +373,17 @@ FUNCTION_CONFIGS = {
         "timeout": 30000,  # Ключ: таймаут запроса в миллисекундах (общий для всех вариантов)
         "retry_count": 3,  # Ключ: количество попыток при ошибке (общий для всех вариантов)
         "delay_between_requests": 3,  # Ключ: задержка между ответом и следующим запросом в миллисекундах (общий для всех вариантов)
-        "data_source": "external_file",  # Ключ: источник данных (file/variable/external_file)
+        "data_source": "external_file",  # Ключ: источник данных (external_file/variable)
         "input_format": "CSV",  # Ключ: формат входного файла
         "csv_column": "REWARD_CODE",  # Ключ: название столбца для извлечения данных
         "csv_delimiter": ";",  # Ключ: разделитель в CSV файле
         "csv_encoding": "utf-8",  # Ключ: кодировка CSV файла
         "input_file": "REWARD (PROM) 2025-07-24 v1",  # Ключ: имя входного файла (без расширения)
         "test_data": [  # Ключ: тестовые данные для работы без внешнего файла
-            "test_reward_1",  # Тестовая награда 1
-            "test_reward_2",  # Тестовая награда 2
-            "test_reward_3"   # Тестовая награда 3
+            "r_01_2025-0_10-1_1",  # Тестовая награда 1
+            "r_01_2025-0_13-1_2",  # Тестовая награда 2
+            "r_02_2025-1_07-8_1_3",   # Тестовая награда 3
+            "r_06_2025-0_18-2_2_1"
         ],
         "processing_options": {  # Ключ: опции обработки данных
             "remove_photo_data": True,  # Ключ: удалять ли поля photoData из JSON файла (JavaScript)
@@ -393,7 +396,7 @@ FUNCTION_CONFIGS = {
             "name": "Reward Profiles",  # Ключ: название скрипта для отображения
             "description": "Обработка профилей наград из JSON в Excel",  # Ключ: описание назначения скрипта
             "active_operations": "json_only",  # Ключ: активные операции ("scripts_only", "json_only", "both")
-            "json_file": "profiles_SIGMA_20250728-001708",  # Ключ: имя JSON файла для обработки (без расширения)
+            "json_file": "profiles_SIGMA_20250728-013712",  # Ключ: имя JSON файла для обработки (без расширения)
             "excel_file": "RewardProfiles",  # Ключ: имя Excel файла для создания (без расширения)
             "excel_freeze_cell": "F2",  # Ключ: ячейка для закрепления в Excel (B2 = первая строка и первая колонка)
             "column_settings": {  # Ключ: настройки обработки колонок
@@ -435,8 +438,9 @@ FUNCTION_CONFIGS = {
             "include_achievements": True,  # Ключ: включать ли достижения
             "format": "detailed"  # Ключ: формат ответа
         },
-        "data_source": "file",  # Ключ: источник данных
+        "data_source": "external_file",  # Ключ: источник данных (external_file/variable)
         "input_format": "TXT",  # Ключ: формат входного файла
+        "input_file": "PROFILE_DATA",  # Ключ: имя входного файла (без расширения)
         "csv_column": "profile_id",  # Ключ: название столбца для извлечения данных
         "csv_delimiter": ";",  # Ключ: разделитель в CSV файле
         "csv_encoding": "utf-8",  # Ключ: кодировка CSV файла
@@ -453,8 +457,9 @@ FUNCTION_CONFIGS = {
             "include_attachments": True,  # Ключ: включать ли вложения
             "format": "full"  # Ключ: формат ответа
         },
-        "data_source": "file",  # Ключ: источник данных
+        "data_source": "external_file",  # Ключ: источник данных (external_file/variable)
         "input_format": "TXT",  # Ключ: формат входного файла
+        "input_file": "NEWS_DETAILS_DATA",  # Ключ: имя входного файла (без расширения)
         "csv_column": "news_id",  # Ключ: название столбца для извлечения данных
         "csv_delimiter": ";",  # Ключ: разделитель в CSV файле
         "csv_encoding": "utf-8",  # Ключ: кодировка CSV файла
@@ -471,8 +476,9 @@ FUNCTION_CONFIGS = {
             "include_contacts": True,  # Ключ: включать ли контакты
             "include_department": True  # Ключ: включать ли отдел
         },
-        "data_source": "file",  # Ключ: источник данных
+        "data_source": "external_file",  # Ключ: источник данных (external_file/variable)
         "input_format": "CSV",  # Ключ: формат входного файла
+        "input_file": "ADDRESS_BOOK_TN_DATA",  # Ключ: имя входного файла (без расширения)
         "csv_column": "employee_number",  # Ключ: название столбца для извлечения данных
         "csv_delimiter": ";",  # Ключ: разделитель в CSV файле
         "csv_encoding": "utf-8",  # Ключ: кодировка CSV файла
@@ -489,8 +495,9 @@ FUNCTION_CONFIGS = {
             "include_hierarchy": True,  # Ключ: включать ли иерархию
             "format": "detailed"  # Ключ: формат ответа
         },
-        "data_source": "file",  # Ключ: источник данных
+        "data_source": "external_file",  # Ключ: источник данных (external_file/variable)
         "input_format": "CSV",  # Ключ: формат входного файла
+        "input_file": "ADDRESS_BOOK_DEV_DATA",  # Ключ: имя входного файла (без расширения)
         "csv_column": "department_id",  # Ключ: название столбца для извлечения данных
         "csv_delimiter": ";",  # Ключ: разделитель в CSV файле
         "csv_encoding": "utf-8",  # Ключ: кодировка CSV файла
@@ -507,8 +514,9 @@ FUNCTION_CONFIGS = {
             "include_details": True,  # Ключ: включать ли детали
             "date_from": "2024-01-01"  # Ключ: дата начала периода
         },
-        "data_source": "file",  # Ключ: источник данных
+        "data_source": "external_file",  # Ключ: источник данных (external_file/variable)
         "input_format": "CSV",  # Ключ: формат входного файла
+        "input_file": "ORDERS_DATA",  # Ключ: имя входного файла (без расширения)
         "csv_column": "employee_id",  # Ключ: название столбца для извлечения данных
         "csv_delimiter": ";",  # Ключ: разделитель в CSV файле
         "csv_encoding": "utf-8",  # Ключ: кодировка CSV файла
@@ -544,8 +552,9 @@ FUNCTION_CONFIGS = {
             "include_crystals": True,  # Ключ: включать ли кристаллы
             "limit": 500  # Ключ: лимит записей
         },
-        "data_source": "file",  # Ключ: источник данных
+        "data_source": "external_file",  # Ключ: источник данных (external_file/variable)
         "input_format": "CSV",  # Ключ: формат входного файла
+        "input_file": "RATING_LIST_DATA",  # Ключ: имя входного файла (без расширения)
         "csv_column": "participant_id",  # Ключ: название столбца для извлечения данных
         "csv_delimiter": ";",  # Ключ: разделитель в CSV файле
         "csv_encoding": "utf-8",  # Ключ: кодировка CSV файла
@@ -1333,20 +1342,7 @@ def load_script_data(config_key, data_list=None):
     
     # Получение данных согласно конфигурации
     if data_list is None:
-        if config["data_source"] == "file":
-            # Загрузка данных из файла
-            file_extension = FILE_EXTENSIONS.get(config["input_format"], ".txt")
-            filename = f"{config_key}_data{file_extension}"
-            config_dir = os.path.join(BASE_DIR, SUBDIRECTORIES["CONFIG"])
-            filepath = os.path.join(config_dir, filename)
-            data_list = load_data_from_file(
-                filepath, 
-                config["input_format"],
-                config["csv_delimiter"],
-                config["csv_encoding"],
-                config["csv_column"]
-            )
-        elif config["data_source"] == "external_file":
+        if config["data_source"] == "external_file":
             # Загрузка данных из внешнего файла
             file_extension = FILE_EXTENSIONS.get(config["input_format"], ".csv")
             config_dir = os.path.join(BASE_DIR, SUBDIRECTORIES["CONFIG"])
@@ -1358,8 +1354,11 @@ def load_script_data(config_key, data_list=None):
                 config["csv_encoding"],
                 config["csv_column"]
             )
-        else:
+        elif config["data_source"] == "variable":
             # Использование тестовых данных из конфигурации
+            data_list = config.get('test_data', []).copy()
+        else:
+            # Fallback: использование тестовых данных
             data_list = config.get('test_data', []).copy()
     
     # Получение всех вариантов конфигурации
@@ -1642,8 +1641,11 @@ def generate_reward_script(data_list=None):
   }}
 
   function extractContestantsCount(text) {{
-    const match = text?.match(/(\\d+)/);
-    return match ? parseInt(match[1], 10) : 0;
+    if (!text) return 0;
+    const match = text.match(/(\\d+)/);
+    const result = match ? parseInt(match[1], 10) : 0;
+    console.log(`🔍 Извлечение количества из текста "${{text}}" -> ${{result}}`);
+    return result;
   }}
 
   async function fetchWithRetry(url, options, maxRetries = {max_retries}, timeout = {timeout}) {{
@@ -1665,6 +1667,7 @@ def generate_reward_script(data_list=None):
   const BASE_URL = '{base_url}';
   const results = {{}};
   let totalProfiles = 0;
+  let processed = 0, skipped = 0, errors = 0;
 
   for (let i = 0; i < ids.length; i++) {{
     const code = ids[i];
@@ -1692,6 +1695,7 @@ def generate_reward_script(data_list=None):
       
       if (count === 0) {{
         console.log(`⏭️ [${{i + 1}}/${{ids.length}}] Код: ${{code}} - Пропускаем (нет участников)`);
+        skipped++;
         continue;
       }}
       
@@ -1702,7 +1706,18 @@ def generate_reward_script(data_list=None):
       
       // Сохраняем первый запрос
       results[code] = [firstData];
-      totalProfiles += (firstData?.body?.badge?.profiles?.length || 0);
+      const firstProfilesCount = firstData?.body?.badge?.profiles?.length || 0;
+      totalProfiles += firstProfilesCount;
+      console.log(`📊 [${{i + 1}}/${{ids.length}}] Код: ${{code}} - Профилей на странице 1: ${{firstProfilesCount}}`);
+      
+      // Отладочная информация о структуре данных
+      if (firstProfilesCount === 0 && count > 0) {{
+        console.log(`🔍 [${{i + 1}}/${{ids.length}}] Код: ${{code}} - Отладка структуры данных:`);
+        console.log(`  - body: ${{!!firstData?.body}}`);
+        console.log(`  - badge: ${{!!firstData?.body?.badge}}`);
+        console.log(`  - profiles: ${{!!firstData?.body?.badge?.profiles}}`);
+        console.log(`  - profiles.length: ${{firstData?.body?.badge?.profiles?.length || 'undefined'}}`);
+      }}
       
       // Запрашиваем дополнительные страницы, если нужно
       if (pagesCount > 1) {{
@@ -1721,8 +1736,9 @@ def generate_reward_script(data_list=None):
             
             const pageData = await pageResp.json();
             results[code].push(pageData);
-            totalProfiles += (pageData?.body?.badge?.profiles?.length || 0);
-            console.log(`✅ [${{i + 1}}/${{ids.length}}] Код: ${{code}} - Страница ${{page}}/${{pagesCount}} - Успешно`);
+            const pageProfilesCount = pageData?.body?.badge?.profiles?.length || 0;
+            totalProfiles += pageProfilesCount;
+            console.log(`✅ [${{i + 1}}/${{ids.length}}] Код: ${{code}} - Страница ${{page}}/${{pagesCount}} - Успешно, профилей: ${{pageProfilesCount}}`);
             
             // Задержка между ответом и следующим запросом страницы
             if (page < pagesCount) {{
@@ -1735,9 +1751,11 @@ def generate_reward_script(data_list=None):
       }}
       
       console.log(`✅ [${{i + 1}}/${{ids.length}}] Код: ${{code}} - Завершен, всего страниц: ${{results[code].length}}`);
+      processed++;
       
     }} catch (e) {{
       console.error(`❌ [${{i + 1}}/${{ids.length}}] Код: ${{code}} - Критическая ошибка:`, e);
+      errors++;
     }}
     
     // Задержка между ответом и следующим кодом
@@ -1759,7 +1777,7 @@ def generate_reward_script(data_list=None):
   a.href = URL.createObjectURL(blob);
   a.download = `profiles_{variant_name.upper()}_${{ts}}.json`;
   a.click();
-  console.log(`\\n✅ Завершено. Всего профилей: ${{totalProfiles}}`);
+  console.log(`\\n🏁 Обработка завершена. Всего: ${{ids.length}}. Успешно: ${{processed}}. Пропущено: ${{skipped}}. Ошибок: ${{errors}}. Профилей: ${{totalProfiles}}. Файл скачан.`);
 }})();
 '''
         
@@ -2315,7 +2333,27 @@ def save_excel_file(df, output_excel_path, config_key=None):
             logger.info(LOG_MESSAGES['json_directory_created'].format(directory=output_dir))
         
         # Создание Excel файла
-        logger.info(LOG_MESSAGES['json_excel_creation'])
+        filename = os.path.basename(output_excel_path)
+        rows, cols = df.shape
+        
+        # Оценка времени обработки (примерно 0.1 секунды на 1000 строк)
+        estimated_seconds = max(1, (rows * cols) / 10000)  # Минимум 1 секунда
+        if estimated_seconds < 60:
+            estimated_time = f"{estimated_seconds:.1f} сек"
+        else:
+            estimated_minutes = estimated_seconds / 60
+            estimated_time = f"{estimated_minutes:.1f} мин"
+        
+        logger.info(LOG_MESSAGES['json_excel_creation'].format(
+            filename=filename, 
+            rows=rows, 
+            cols=cols
+        ))
+        logger.info(LOG_MESSAGES['json_excel_processing_info'].format(
+            rows=rows,
+            cols=cols,
+            estimated_time=estimated_time
+        ))
         with pd.ExcelWriter(output_excel_path, engine='openpyxl') as writer:
             df.to_excel(writer, sheet_name='DATA', index=False)
             workbook = writer.book
@@ -2348,7 +2386,14 @@ def save_excel_file(df, output_excel_path, config_key=None):
             if config_key == "reward" or (config_key and "reward" in config_key):
                 create_reward_summary_sheet(workbook, df)
         
-        logger.info(LOG_MESSAGES['json_excel_success'].format(file_path=output_excel_path))
+        # Получаем размер файла
+        file_size = os.path.getsize(output_excel_path)
+        file_size_mb = file_size / (1024 * 1024)  # Конвертируем в МБ
+        
+        logger.info(LOG_MESSAGES['json_excel_success'].format(
+            file_path=output_excel_path,
+            size=f"{file_size_mb:.2f} МБ"
+        ))
         return True
         
     except Exception as e:
@@ -3012,7 +3057,19 @@ def convert_specific_json_file(file_name_without_extension, config_key=None):
             
         # Конвертируем файл
         if convert_json_to_excel(input_json_path, output_excel_path, config_key):
-            logger.info(LOG_MESSAGES['json_excel_success'].format(file_path=output_excel_path))
+            # Получаем размер файла
+            if os.path.exists(output_excel_path):
+                file_size = os.path.getsize(output_excel_path)
+                file_size_mb = file_size / (1024 * 1024)  # Конвертируем в МБ
+                logger.info(LOG_MESSAGES['json_excel_success'].format(
+                    file_path=output_excel_path,
+                    size=f"{file_size_mb:.2f} МБ"
+                ))
+            else:
+                logger.info(LOG_MESSAGES['json_excel_success'].format(
+                    file_path=output_excel_path,
+                    size="неизвестно"
+                ))
             return True
         else:
             return False
