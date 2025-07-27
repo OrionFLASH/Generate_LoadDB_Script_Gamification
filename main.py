@@ -58,6 +58,7 @@ FILE_EXTENSIONS = {
 ACTIVE_SCRIPTS = [
     "leaders_for_admin",  # Скрипт для получения информации по участникам турнира (LeadersForAdmin)
     "reward",  # Скрипт для выгрузки профилей участников по кодам наград (Reward)
+    "reward_profiles",  # Обработка профилей наград из JSON в Excel
     # "reward",             # Скрипт для получения информации о наградах сотрудников
     # "profile",            # Скрипт для получения профилей сотрудников
     # "news_details",       # Скрипт для получения детальной карточки новости
@@ -232,7 +233,10 @@ LOG_MESSAGES = {
     "no_json_file_warning": "Для скрипта {script_name} не указан json_file",  # Ключ: нет JSON файла
     "json_processing_skipped": "Пропуск обработки JSON для {script_name} (режим: {operations})",  # Ключ: пропуск обработки JSON
     "no_active_scripts": "Нет активных скриптов для обработки. Настройте ACTIVE_SCRIPTS.",  # Ключ: нет активных скриптов
-    "summary_output": "Итоговая статистика работы программы:\n{summary}"  # Ключ: итоговая статистика
+    "summary_output": "Итоговая статистика работы программы:\n{summary}",  # Ключ: итоговая статистика
+    "reward_profiles_leaders_found": "Найдены лидеры для кода награды {code}: {count} (структура: {structure})",  # Ключ: найдены лидеры наград
+    "reward_profiles_leaders_processed": "Обработано кодов наград: {rewards}, общее количество лидеров: {leaders}",  # Ключ: лидеры наград обработаны
+    "json_reward_profiles_conversion_error": "Ошибка при конвертации JSON профилей наград в Excel: {error}"  # Ключ: ошибка конвертации профилей наград
 }
 
 # =============================================================================
@@ -325,6 +329,15 @@ FUNCTION_CONFIGS = {
             "max_profiles_per_request": 1000,  # Ключ: максимальное количество профилей на запрос
             "skip_empty_profiles": True  # Ключ: пропускать ли пустые профили
         }
+    },
+    "reward_profiles": {  # Ключ: конфигурация для обработки профилей наград (JSON → Excel)
+        "name": "Reward Profiles",  # Ключ: название скрипта для отображения
+        "description": "Обработка профилей наград из JSON в Excel",  # Ключ: описание назначения скрипта
+        "active_operations": "json_only",  # Ключ: активные операции ("scripts_only", "json_only", "both")
+        "excel_freeze_row": 1,  # Ключ: номер строки для закрепления в Excel (1 = заголовок)
+        "json_file": "profiles_SIGMA_20250727-032838",  # Ключ: имя JSON файла для обработки (без расширения)
+        "excel_file": "RewardProfiles",  # Ключ: имя Excel файла для создания (без расширения)
+        "excel_freeze_cell": "B2"  # Ключ: ячейка для закрепления в Excel (B2 = первая строка и первая колонка)
     },
     "profile": {  # Ключ: конфигурация для скрипта PROFILE (профили сотрудников)
         "name": "PROFILE",  # Ключ: название скрипта для отображения
@@ -933,6 +946,62 @@ def flatten_reward_profile_data(profile_data):
                         flattened[f'{group_code}_placeInRating'] = ''
                     
                     flattened[f'{group_code}_ratingCategoryName'] = rating.get('ratingCategoryName', '')
+    
+    return flattened
+
+def flatten_reward_leader_data(leader_data, reward_code):
+    """
+    Преобразование данных лидера награды в плоскую структуру
+    
+    Args:
+        leader_data (dict): Данные лидера из структуры наград
+        reward_code (str): Код награды
+        
+    Returns:
+        dict: Плоская структура данных лидера награды
+    """
+    flattened = {}
+    
+    # Основные поля лидера
+    flattened['rewardCode'] = reward_code
+    flattened['employeeNumber'] = leader_data.get('employeeNumber', '')
+    flattened['lastName'] = leader_data.get('lastName', '')
+    flattened['firstName'] = leader_data.get('firstName', '')
+    flattened['terDivisionName'] = leader_data.get('terDivisionName', '')
+    flattened['gosbCode'] = leader_data.get('gosbCode', '')
+    flattened['employeeStatus'] = leader_data.get('employeeStatus', '')
+    flattened['receivingDate'] = leader_data.get('receivingDate', '')
+    flattened['isMarked'] = leader_data.get('isMarked', False)
+    
+    # Создаем полное имя
+    flattened['fullName'] = f"{leader_data.get('lastName', '')} {leader_data.get('firstName', '')}".strip()
+    
+    # Обработка colorCode
+    color_code = leader_data.get('colorCode', {})
+    flattened['colorPrimary'] = color_code.get('primary', '')
+    flattened['colorSecondary'] = color_code.get('secondary', '')
+    
+    # Обработка earnedBadges
+    earned_badges = leader_data.get('earnedBadges', [])
+    flattened['earnedBadgesCount'] = len(earned_badges)
+    flattened['earnedBadgesList'] = ', '.join([badge.get('name', '') for badge in earned_badges if badge.get('name')])
+    
+    # Обработка tags
+    tags = leader_data.get('tags', [])
+    flattened['tagsCount'] = len(tags)
+    flattened['tagsList'] = ', '.join([tag.get('tagName', '') for tag in tags if tag.get('tagName')])
+    
+    # Детальная информация о тегах
+    for i, tag in enumerate(tags[:5]):  # Ограничиваем до 5 тегов
+        flattened[f'tag{i+1}_id'] = tag.get('tagId', '')
+        flattened[f'tag{i+1}_name'] = tag.get('tagName', '')
+        flattened[f'tag{i+1}_color'] = tag.get('tagColor', '')
+    
+    # Заполняем пустые теги
+    for i in range(len(tags), 5):
+        flattened[f'tag{i+1}_id'] = ''
+        flattened[f'tag{i+1}_name'] = ''
+        flattened[f'tag{i+1}_color'] = ''
     
     return flattened
 
@@ -1786,6 +1855,100 @@ def extract_profiles_from_data(data, structure):
         return None
 
 @measure_time
+def convert_reward_profiles_json_to_excel(input_json_path, output_excel_path, config_key=None):
+    """
+    Конвертация JSON файла с данными профилей наград в Excel
+    
+    Args:
+        input_json_path (str): Путь к входному JSON файлу
+        output_excel_path (str): Путь к выходному Excel файлу
+        config_key (str, optional): Ключ конфигурации для получения настроек
+        
+    Returns:
+        bool: True если конвертация успешна, False в противном случае
+    """
+    try:
+        logger.info(LOG_MESSAGES['json_conversion_start'].format(input=input_json_path, output=output_excel_path))
+        
+        # Проверка существования входного файла
+        if not os.path.exists(input_json_path):
+            logger.error(LOG_MESSAGES['json_file_not_found'].format(file_path=input_json_path))
+            return False
+        
+        # Загрузка JSON данных
+        json_data = load_json_data(input_json_path)
+        if json_data is None:
+            return False
+        
+        # Обработка данных
+        logger.info(LOG_MESSAGES['json_data_processing'])
+        all_leaders_data = []
+        
+        if isinstance(json_data, dict):
+            # Обрабатываем все коды наград
+            total_rewards = 0
+            total_leaders = 0
+            
+            for reward_code, reward_value in json_data.items():
+                if isinstance(reward_value, dict):
+                    # Получаем информацию о награде
+                    profiles_count = reward_value.get('profilesCount', 0)
+                    badge_info = reward_value.get('badgeInfo', {})
+                    contestants = badge_info.get('contestants', '')
+                    
+                    # Получаем лидеров из badgeInfo.leaders
+                    leaders = badge_info.get('leaders', [])
+                    
+                    if leaders:
+                        # Добавляем информацию о коде награды к каждому лидеру
+                        for leader in leaders:
+                            if isinstance(leader, dict):
+                                leader_with_reward = flatten_reward_leader_data(leader, reward_code)
+                                
+                                # Добавляем информацию о награде
+                                leader_with_reward['badgeId'] = badge_info.get('badgeId', '')
+                                leader_with_reward['contestants'] = contestants
+                                leader_with_reward['profilesCount'] = profiles_count
+                                
+                                all_leaders_data.append(leader_with_reward)
+                        
+                        total_rewards += 1
+                        total_leaders += len(leaders)
+                        logger.debug(LOG_MESSAGES['json_reward_found'].format(key=reward_code, count=len(leaders)))
+                        logger.info(LOG_MESSAGES['reward_profiles_leaders_found'].format(code=reward_code, count=len(leaders), structure="badgeInfo.leaders"))
+            
+            logger.info(LOG_MESSAGES['reward_profiles_leaders_processed'].format(rewards=total_rewards, leaders=total_leaders))
+            leaders_data = all_leaders_data
+            
+        elif isinstance(json_data, list):
+            # Прямой список лидеров
+            leaders_data = json_data
+            logger.info(LOG_MESSAGES['json_direct_leaders'].format(count=len(leaders_data)))
+        else:
+            logger.error(LOG_MESSAGES['json_invalid_format'])
+            return False
+        
+        if not leaders_data:
+            logger.error(LOG_MESSAGES['no_profiles_error'])
+            return False
+        
+        # Создание DataFrame
+        df = pd.DataFrame(leaders_data)
+        
+        if df.empty:
+            logger.warning(LOG_MESSAGES['no_data_warning'])
+            return False
+        
+        logger.info(LOG_MESSAGES['json_records_processed'].format(count=len(df)))
+        
+        # Сохранение в Excel
+        return save_excel_file(df, output_excel_path, config_key)
+        
+    except Exception as e:
+        logger.error(LOG_MESSAGES['json_reward_profiles_conversion_error'].format(error=e))
+        return False
+
+@measure_time
 def convert_reward_json_to_excel(input_json_path, output_excel_path, config_key=None):
     """
     Конвертация JSON файла с данными наград в Excel
@@ -1943,14 +2106,29 @@ def convert_json_to_excel(input_json_path, output_excel_path, config_key=None):
     Returns:
         bool: True если конвертация успешна, False в противном случае
     """
-    # Определяем тип данных по config_key
+    # Определяем тип данных по config_key и имени файла
     if config_key == "leaders_for_admin":
         return convert_leaders_json_to_excel(input_json_path, output_excel_path, config_key)
     elif config_key == "reward":
         return convert_reward_json_to_excel(input_json_path, output_excel_path, config_key)
+    elif config_key == "reward_profiles":
+        return convert_reward_profiles_json_to_excel(input_json_path, output_excel_path, config_key)
     else:
-        # По умолчанию используем обработку лидеров
-        return convert_leaders_json_to_excel(input_json_path, output_excel_path, config_key)
+        # Автоматическое определение по имени файла
+        file_name = os.path.basename(input_json_path).lower()
+        
+        # Если файл содержит "profiles" - используем обработку профилей наград
+        if "profiles" in file_name:
+            logger.info(LOG_MESSAGES['json_file_processing'].format(file_name=os.path.basename(input_json_path)) + " (автоопределение: профили наград)")
+            return convert_reward_profiles_json_to_excel(input_json_path, output_excel_path, config_key)
+        # Если файл содержит "leaders" - используем обработку лидеров
+        elif "leaders" in file_name:
+            logger.info(LOG_MESSAGES['json_file_processing'].format(file_name=os.path.basename(input_json_path)) + " (автоопределение: лидеры)")
+            return convert_leaders_json_to_excel(input_json_path, output_excel_path, config_key)
+        else:
+            # По умолчанию используем обработку лидеров
+            logger.info(LOG_MESSAGES['json_file_processing'].format(file_name=os.path.basename(input_json_path)) + " (автоопределение: по умолчанию - лидеры)")
+            return convert_leaders_json_to_excel(input_json_path, output_excel_path, config_key)
 
 @measure_time
 def convert_specific_json_file(file_name_without_extension, config_key=None):
@@ -2106,6 +2284,9 @@ def main():
                             generate_leaders_for_admin_script()
                         elif script_name == "reward":
                             generate_reward_script()
+                        elif script_name == "reward_profiles":
+                            # reward_profiles не генерирует скрипты, только обрабатывает JSON
+                            logger.info(LOG_MESSAGES['script_generation_skipped'].format(script_name=script_name, operations="json_only"))
                         elif script_name == "profile":
                             generate_profile_script()
                         elif script_name == "news_details":
@@ -2139,6 +2320,7 @@ def main():
                         if "json_file" in config:
                             json_file = config["json_file"]
                             logger.info(LOG_MESSAGES['json_file_processing_info'].format(json_file=json_file))
+                            
                             convert_specific_json_file(json_file, script_name)
                         else:
                             logger.warning(LOG_MESSAGES['no_json_file_warning'].format(script_name=script_name))
