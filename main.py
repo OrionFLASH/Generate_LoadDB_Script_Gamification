@@ -298,7 +298,6 @@ FUNCTION_CONFIGS = {
             "include_division_ratings": True,  # Ключ: включать ли рейтинги подразделений
             "include_tournament_info": True  # Ключ: включать ли информацию о турнирах
         },
-        "selected_variant": "sigma",  # Ключ: выбранный вариант (sigma/alpha)
         "data_source": "external_file",  # Ключ: источник данных (file/variable/external_file)
         "input_format": "CSV",  # Ключ: формат входного файла
         "csv_column": "TOURNAMENT_CODE",  # Ключ: название столбца для извлечения данных
@@ -362,7 +361,6 @@ FUNCTION_CONFIGS = {
         "timeout": 30000,  # Ключ: таймаут запроса в миллисекундах (общий для всех вариантов)
         "retry_count": 3,  # Ключ: количество попыток при ошибке (общий для всех вариантов)
         "delay_between_requests": 5,  # Ключ: задержка между запросами в секундах (общий для всех вариантов)
-        "selected_variant": "sigma",  # Ключ: выбранный вариант (sigma/alpha)
         "data_source": "external_file",  # Ключ: источник данных (file/variable/external_file)
         "input_format": "CSV",  # Ключ: формат входного файла
         "csv_column": "REWARD_CODE",  # Ключ: название столбца для извлечения данных
@@ -811,17 +809,18 @@ def get_data():
     return TEST_DATA_LIST.copy()
 
 @measure_time
-def save_script_to_file(script_content, script_name, config_key=None):
+def save_script_to_file(script_content, script_name, config_key=None, variant=None):
     """
     Сохранение сгенерированного скрипта в файл TXT
     
-    Создает файл с именем на основе названия скрипта и временной метки
-    в директории OUTPUT.
+    Создает файл с именем на основе названия скрипта, варианта и временной метки
+    в директории SCRIPT.
     
     Args:
         script_content (str): Содержимое скрипта для сохранения
         script_name (str): Название скрипта для формирования имени файла
         config_key (str, optional): Ключ конфигурации для дополнительной информации
+        variant (str, optional): Вариант скрипта (sigma/alpha)
         
     Returns:
         str: Путь к сохраненному файлу или None в случае ошибки
@@ -835,10 +834,8 @@ def save_script_to_file(script_content, script_name, config_key=None):
         safe_name = script_name.replace(' ', '_').replace('(', '').replace(')', '').replace('/', '_')
         
         # Добавляем информацию о варианте если есть
-        if config_key in ["leaders_for_admin", "reward"]:
-            config = FUNCTION_CONFIGS[config_key]
-            selected_variant = config.get("selected_variant", "sigma")
-            filename = f"{safe_name}_{selected_variant.upper()}_{timestamp}.txt"
+        if variant:
+            filename = f"{safe_name}_{variant.upper()}_{timestamp}.txt"
         else:
             filename = f"{safe_name}_{timestamp}.txt"
         
@@ -1302,7 +1299,7 @@ def load_script_data(config_key, data_list=None):
         data_list (list, optional): Список данных для обработки
         
     Returns:
-        tuple: (config, data_list, selected_variant, variant_config)
+        tuple: (config, data_list, variants_configs)
     """
     config = FUNCTION_CONFIGS[config_key]
     
@@ -1337,20 +1334,19 @@ def load_script_data(config_key, data_list=None):
             # Использование тестовых данных
             data_list = TEST_DATA_LIST.copy()
     
-    # Получение варианта конфигурации
-    selected_variant = config.get("selected_variant", "sigma")
-    variant_config = config["variants"][selected_variant]
+    # Получение всех вариантов конфигурации
+    variants_configs = config["variants"]
     
     # Логирование процесса генерации
-    logger.debug(LOG_MESSAGES['script_generation'].format(script_name=f"{config['name']} ({selected_variant.upper()})"))
-    logger.debug(LOG_MESSAGES['config_loaded'].format(script_name=f"{config['name']} ({selected_variant.upper()})"))
-    logger.debug(LOG_MESSAGES['variant_selected'].format(variant=selected_variant.upper()))
+    logger.debug(LOG_MESSAGES['script_generation'].format(script_name=f"{config['name']} (ALL VARIANTS)"))
+    logger.debug(LOG_MESSAGES['config_loaded'].format(script_name=f"{config['name']} (ALL VARIANTS)"))
+    logger.debug(f"Варианты: {', '.join([v.upper() for v in variants_configs.keys()])}")
     logger.debug(LOG_MESSAGES['data_source_selected'].format(
         source=config['data_source'], 
         format=config['input_format']
     ))
     
-    return config, data_list, selected_variant, variant_config
+    return config, data_list, variants_configs
 
 def save_and_copy_script(script, config, config_key, data_list):
     """
@@ -1386,12 +1382,10 @@ def generate_leaders_for_admin_script(data_list=None):
     
     # Загрузка данных и конфигурации
     script_logger.info(LOG_MESSAGES['data_loading'])
-    config, data_list, selected_variant, variant_config = load_script_data("leaders_for_admin", data_list)
+    config, data_list, variants_configs = load_script_data("leaders_for_admin", data_list)
     
     script_logger.info(LOG_MESSAGES['config_loaded_count'].format(count=len(data_list)))
-    script_logger.debug(LOG_MESSAGES['variant_selected'].format(variant=selected_variant))
-    script_logger.debug(LOG_MESSAGES['domain_info'].format(domain=variant_config['domain']))
-    script_logger.debug(LOG_MESSAGES['api_path_info'].format(api_path=variant_config['params']['api_path']))
+    script_logger.debug(f"Варианты: {', '.join([v.upper() for v in variants_configs.keys()])}")
     
     # Получаем настройки из конфигурации
     delay = config.get('delay_between_requests', 5)
@@ -1402,10 +1396,18 @@ def generate_leaders_for_admin_script(data_list=None):
     script_logger.debug(LOG_MESSAGES['request_params'].format(delay=delay, max_retries=max_retries, timeout=timeout))
     script_logger.debug(f"Удаление photoData: {remove_photo_data}")
     
-    # Генерация JavaScript скрипта для LeadersForAdmin
-    script = f"""// ==UserScript==
+    # Генерируем скрипты для всех вариантов
+    generated_scripts = []
+    
+    for variant_name, variant_config in variants_configs.items():
+        script_logger.info(f"Генерация скрипта для варианта: {variant_name.upper()}")
+        script_logger.debug(LOG_MESSAGES['domain_info'].format(domain=variant_config['domain']))
+        script_logger.debug(LOG_MESSAGES['api_path_info'].format(api_path=variant_config['params']['api_path']))
+        
+        # Генерация JavaScript скрипта для LeadersForAdmin
+        script = f"""// ==UserScript==
 // Скрипт для DevTools. Выгрузка лидеров для всех Tournament ID (одна страница на турнир)
-// Вариант: {selected_variant.upper()}
+// Вариант: {variant_name.upper()}
 // Сгенерировано: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}
 // Количество турниров: {len(data_list)}
 (async () => {{
@@ -1442,7 +1444,7 @@ def generate_leaders_for_admin_script(data_list=None):
   const results = {{}};
   let processed = 0, skipped = 0, errors = 0;
   console.log('▶️ Всего к обработке:', ids.length, 'код(ов)');
-  console.log('🎯 Вариант:', '{selected_variant.upper()}');
+  console.log('🎯 Вариант:', '{variant_name.upper()}');
 
   for (let i = 0; i < ids.length; ++i) {{
     const tid = ids[i];
@@ -1495,20 +1497,28 @@ def generate_leaders_for_admin_script(data_list=None):
   const blob = new Blob([JSON.stringify(results, null, 2)], {{type: 'application/json'}});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = service + '_{selected_variant.upper()}_' + ts + '.json';
+  a.download = service + '_{variant_name.upper()}_' + ts + '.json';
   document.body.appendChild(a);
   a.click();
   a.remove();
   console.log(`🏁 Обработка завершена. Всего: ${{ids.length}}. Успешно: ${{processed}}. Пропущено: ${{skipped}}. Ошибок: ${{errors}}. Файл скачан.`);
 }})();"""
+        
+        # Сохранение скрипта для текущего варианта
+        script_logger.info(f"Сохранение скрипта для варианта: {variant_name.upper()}")
+        saved_filepath = save_script_to_file(script, config['name'], "leaders_for_admin", variant_name)
+        generated_scripts.append((variant_name, saved_filepath))
     
-    # Сохранение и копирование скрипта
-    script_logger.info(LOG_MESSAGES['script_saving'])
-    save_and_copy_script(script, config, "leaders_for_admin", data_list)
+    # Логирование результатов
+    script_logger.info(f"Сгенерировано скриптов: {len(generated_scripts)}")
+    for variant_name, filepath in generated_scripts:
+        script_logger.info(f"✅ {variant_name.upper()}: {filepath}")
     
     script_logger.info(LOG_MESSAGES['script_generated_success'].format(script_name="LeadersForAdmin", count=len(data_list)))
     script_logger.debug(LOG_MESSAGES['function_completed'].format(func="generate_leaders_for_admin_script", params="args=(), kwargs=[]", time="0.0000"))
-    return script
+    
+    # Возвращаем информацию о сгенерированных скриптах
+    return generated_scripts
 
 @measure_time
 def generate_reward_script(data_list=None):
@@ -1527,12 +1537,10 @@ def generate_reward_script(data_list=None):
     import json
     
     script_logger.info(LOG_MESSAGES['data_loading'])
-    config, data_list, selected_variant, variant_config = load_script_data("reward", data_list)
+    config, data_list, variants_configs = load_script_data("reward", data_list)
     
     script_logger.info(LOG_MESSAGES['config_loaded_count'].format(count=len(data_list)))
-    script_logger.debug(LOG_MESSAGES['variant_selected'].format(variant=selected_variant))
-    script_logger.debug(LOG_MESSAGES['domain_info'].format(domain=variant_config['domain']))
-    script_logger.debug(LOG_MESSAGES['api_path_info'].format(api_path=variant_config['params']['api_path']))
+    script_logger.debug(f"Варианты: {', '.join([v.upper() for v in variants_configs.keys()])}")
     
     # Получаем настройки из конфигурации
     delay = config.get('delay_between_requests', 5)
@@ -1540,20 +1548,29 @@ def generate_reward_script(data_list=None):
     timeout = config.get('timeout', 30000)
     remove_photo_data = config.get('processing_options', {}).get('remove_photo_data', True)
     
-    domain = variant_config['domain']
-    api_path = variant_config['params']['api_path']
-    service = variant_config['params']['service']
-    base_url = f"{domain}{api_path}"
-    
     script_logger.debug(LOG_MESSAGES['request_params'].format(delay=delay, max_retries=max_retries, timeout=timeout))
-    script_logger.debug(LOG_MESSAGES['base_url_info'].format(base_url=base_url))
     script_logger.debug(f"Удаление photoData: {remove_photo_data}")
     
-    ids_string = ', '.join([f'"{item}"' for item in data_list])
-    script_logger.debug(LOG_MESSAGES['ids_generated'].format(count=len(data_list)))
-    script = f'''// ==UserScript==
+    # Генерируем скрипты для всех вариантов
+    generated_scripts = []
+    
+    for variant_name, variant_config in variants_configs.items():
+        script_logger.info(f"Генерация скрипта для варианта: {variant_name.upper()}")
+        script_logger.debug(LOG_MESSAGES['domain_info'].format(domain=variant_config['domain']))
+        script_logger.debug(LOG_MESSAGES['api_path_info'].format(api_path=variant_config['params']['api_path']))
+        
+        domain = variant_config['domain']
+        api_path = variant_config['params']['api_path']
+        service = variant_config['params']['service']
+        base_url = f"{domain}{api_path}"
+        
+        script_logger.debug(LOG_MESSAGES['base_url_info'].format(base_url=base_url))
+        
+        ids_string = ', '.join([f'"{item}"' for item in data_list])
+        script_logger.debug(LOG_MESSAGES['ids_generated'].format(count=len(data_list)))
+        script = f'''// ==UserScript==
 // Скрипт для DevTools. Выгрузка профилей участников по кодам наград с пагинацией
-// Вариант: {selected_variant.upper()}
+// Вариант: {variant_name.upper()}
 (async () => {{
   function removePhotoData(obj) {{
     if (Array.isArray(obj)) {{ obj.forEach(removePhotoData); }}
@@ -1704,17 +1721,27 @@ def generate_reward_script(data_list=None):
   const blob = new Blob([JSON.stringify(results, null, 2)], {{ type: 'application/json' }});
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `profiles_{selected_variant.upper()}_${{ts}}.json`;
+  a.download = `profiles_{variant_name.upper()}_${{ts}}.json`;
   a.click();
   console.log(`\\n✅ Завершено. Всего профилей: ${{totalProfiles}}`);
 }})();
 '''
-    script_logger.info(LOG_MESSAGES['script_saving'])
-    save_script_to_file(script, config['name'], "reward")
+        
+        # Сохранение скрипта для текущего варианта
+        script_logger.info(f"Сохранение скрипта для варианта: {variant_name.upper()}")
+        saved_filepath = save_script_to_file(script, config['name'], "reward", variant_name)
+        generated_scripts.append((variant_name, saved_filepath))
+    
+    # Логирование результатов
+    script_logger.info(f"Сгенерировано скриптов: {len(generated_scripts)}")
+    for variant_name, filepath in generated_scripts:
+        script_logger.info(f"✅ {variant_name.upper()}: {filepath}")
     
     script_logger.info(LOG_MESSAGES['script_generated_success'].format(script_name="Reward", count=len(data_list)))
     script_logger.debug(LOG_MESSAGES['function_completed'].format(func="generate_reward_script", params="args=(), kwargs=[]", time="0.0000"))
-    return script
+    
+    # Возвращаем информацию о сгенерированных скриптах
+    return generated_scripts
 
 def generate_profile_script(data_list=None):
     """
@@ -2958,20 +2985,17 @@ def convert_specific_json_file(file_name_without_extension, config_key=None):
             if config_key == "reward" and "reward_profiles" in config:
                 reward_profiles_config = config["reward_profiles"]
                 excel_file_base = reward_profiles_config.get("excel_file", file_name_without_extension)
-                selected_variant = config.get("selected_variant", "sigma")
             elif config_key == "leaders_for_admin" and "leaders_processing" in config:
                 leaders_processing_config = config["leaders_processing"]
                 excel_file_base = leaders_processing_config.get("excel_file", file_name_without_extension)
-                selected_variant = config.get("selected_variant", "sigma")
             else:
                 excel_file_base = config.get("excel_file", file_name_without_extension)
-                selected_variant = config.get("selected_variant", "sigma")
             
             # Создаем временную метку
             timestamp = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
             
-            # Формируем имя файла: имя_из_конфига_<SIGMA/ALPHA>_YYYY-MM-DD-HH-MM-SS.xlsx
-            excel_filename = f"{excel_file_base}_{selected_variant.upper()}_{timestamp}{FILE_EXTENSIONS['EXCEL']}"
+            # Формируем имя файла: имя_из_конфига_YYYY-MM-DD-HH-MM-SS.xlsx (без варианта)
+            excel_filename = f"{excel_file_base}_{timestamp}{FILE_EXTENSIONS['EXCEL']}"
         else:
             # Fallback: используем имя JSON файла с временной меткой
             timestamp = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
