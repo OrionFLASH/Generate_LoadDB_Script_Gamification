@@ -180,6 +180,7 @@ LOG_MESSAGES = {
     "json_data_loading": "Загружаем JSON данные...",  # Ключ: загрузка JSON данных
     "json_data_processing": "Обрабатываем JSON данные...",  # Ключ: обработка JSON данных
     "json_leaders_found": "Найдены данные лидеров в ключе: {key}, количество: {count}",  # Ключ: найдены данные лидеров
+    "json_reward_found": "Найдены данные участников в коде: {key}, количество: {count}",  # Ключ: найдены данные участников наград
     "json_direct_leaders": "Прямой список лидеров, количество: {count}",  # Ключ: прямой список лидеров
     "json_invalid_format": "Неверный формат JSON данных",  # Ключ: неверный формат JSON
     "json_no_leaders": "Не найдены данные лидеров в JSON файле",  # Ключ: нет данных лидеров
@@ -189,7 +190,49 @@ LOG_MESSAGES = {
     "json_conversion_error": "Ошибка при конвертации JSON: {error}",  # Ключ: ошибка конвертации JSON
     "json_file_processing": "Обработка JSON файла: {file_name}",  # Ключ: обработка конкретного JSON файла
     "json_files_processed": "Обработано JSON файлов: {count}",  # Ключ: количество обработанных JSON файлов
-    "json_no_files_found": "JSON файлы для обработки не найдены"  # Ключ: JSON файлы не найдены
+    "json_no_files_found": "JSON файлы для обработки не найдены",  # Ключ: JSON файлы не найдены
+    
+    # Сообщения для обработки данных
+    "float_conversion_error": "Ошибка преобразования '{val}' в float: {ex} | Context: {context}",  # Ключ: ошибка преобразования в float
+    "reward_summary_sheet_created": "Лист REWARD_SUMMARY создан успешно",  # Ключ: лист наград создан
+    "variant_selected": "Выбранный вариант: {variant}",  # Ключ: выбранный вариант
+    "script_generation_start": "=== ГЕНЕРАЦИЯ СКРИПТА: {script_name} ===",  # Ключ: начало генерации скрипта
+    "data_loading": "Загрузка данных и конфигурации...",  # Ключ: загрузка данных
+    "config_loaded_count": "Конфигурация загружена: {count} элементов",  # Ключ: конфигурация загружена с количеством
+    "domain_info": "Домен: {domain}",  # Ключ: информация о домене
+    "api_path_info": "API путь: {api_path}",  # Ключ: информация о пути API
+    "request_params": "Параметры запросов: delay={delay}, max_retries={max_retries}, timeout={timeout}",  # Ключ: параметры запросов
+    "base_url_info": "Базовый URL: {base_url}",  # Ключ: базовый URL
+    "ids_generated": "Строка IDs сгенерирована: {count} элементов",  # Ключ: IDs сгенерированы
+    "script_saving": "Сохранение скрипта в файл...",  # Ключ: сохранение скрипта
+    "script_generated_success": "Скрипт {script_name} сгенерирован успешно (данных: {count})",  # Ключ: скрипт сгенерирован успешно
+    "json_load_error": "Ошибка при загрузке JSON файла {file_path}: {error}",  # Ключ: ошибка загрузки JSON
+    "excel_creation_error": "Ошибка при создании Excel файла: {error}",  # Ключ: ошибка создания Excel
+    "tournaments_processed": "Обработано турниров: {tournaments}, общее количество лидеров: {leaders}",  # Ключ: турниры обработаны
+    "no_data_warning": "Нет данных для обработки",  # Ключ: нет данных
+    "json_leaders_conversion_error": "Ошибка при конвертации JSON лидеров в Excel: {error}",  # Ключ: ошибка конвертации лидеров
+    "profile_extraction_error": "Ошибка при извлечении профилей из данных: {error}",  # Ключ: ошибка извлечения профилей
+    "reward_profiles_found": "Найдено профилей для кода награды {code}: {count} (структура: {structure})",  # Ключ: найдены профили наград
+    "reward_profiles_found_old": "Найдено профилей для кода награды {code}: {count} (старая структура)",  # Ключ: найдены профили наград (старая структура)
+    "rewards_processed": "Обработано кодов наград: {rewards}, общее количество профилей: {profiles}",  # Ключ: награды обработаны
+    "direct_profiles_list": "Прямой список профилей: {count}",  # Ключ: прямой список профилей
+    "no_profiles_error": "Не найдено данных профилей",  # Ключ: нет профилей
+    "json_reward_conversion_error": "Ошибка при конвертации JSON наград в Excel: {error}",  # Ключ: ошибка конвертации наград
+    "excel_file_creation": "Создаем Excel файл: {filename}",  # Ключ: создание Excel файла
+    "separator_line": "=" * 70,  # Ключ: разделительная линия
+    "active_scripts_info": "Активные скрипты: {scripts}",  # Ключ: активные скрипты
+    "stage1_title": "=== ЭТАП 1: ГЕНЕРАЦИЯ СКРИПТОВ ===",  # Ключ: заголовок этапа 1
+    "script_processing": "--- ОБРАБОТКА СКРИПТА: {script_name} ---",  # Ключ: обработка скрипта
+    "active_operations_info": "Активные операции для {script_name}: {operations}",  # Ключ: активные операции
+    "script_generation_info": "Генерация скрипта: {script_name}",  # Ключ: генерация скрипта
+    "script_generation_skipped": "Пропуск генерации скрипта для {script_name} (режим: {operations})",  # Ключ: пропуск генерации
+    "unknown_script_error": "Неизвестный скрипт: {script_name}",  # Ключ: неизвестный скрипт
+    "stage2_title": "=== ЭТАП 2: ОБРАБОТКА JSON ФАЙЛОВ ===",  # Ключ: заголовок этапа 2
+    "json_file_processing_info": "Обработка JSON файла: {json_file}",  # Ключ: обработка JSON файла
+    "no_json_file_warning": "Для скрипта {script_name} не указан json_file",  # Ключ: нет JSON файла
+    "json_processing_skipped": "Пропуск обработки JSON для {script_name} (режим: {operations})",  # Ключ: пропуск обработки JSON
+    "no_active_scripts": "Нет активных скриптов для обработки. Настройте ACTIVE_SCRIPTS.",  # Ключ: нет активных скриптов
+    "summary_output": "Итоговая статистика работы программы:\n{summary}"  # Ключ: итоговая статистика
 }
 
 # =============================================================================
@@ -736,7 +779,7 @@ def parse_float_safe(val, context=None):
         return float(val)
     except (ValueError, TypeError) as ex:
         if context:
-            logger.warning(f"Ошибка преобразования '{val}' в float: {ex} | Context: {context}")
+            logger.warning(LOG_MESSAGES['float_conversion_error'].format(val=val, ex=ex, context=context))
         return None
 
 def flatten_leader_data(leader_data):
@@ -1076,7 +1119,7 @@ def create_reward_summary_sheet(workbook, data_df):
         cell.fill = header_fill
         cell.font = header_font
     
-    logger.info("Лист REWARD_SUMMARY создан успешно")
+    logger.info(LOG_MESSAGES['reward_summary_sheet_created'])
 
 # =============================================================================
 # ФУНКЦИИ ГЕНЕРАЦИИ СКРИПТОВ
@@ -1133,7 +1176,7 @@ def load_script_data(config_key, data_list=None):
     # Логирование процесса генерации
     logger.debug(LOG_MESSAGES['script_generation'].format(script_name=f"{config['name']} ({selected_variant.upper()})"))
     logger.debug(LOG_MESSAGES['config_loaded'].format(script_name=f"{config['name']} ({selected_variant.upper()})"))
-    logger.debug(f"Выбранный вариант: {selected_variant.upper()}")
+    logger.debug(LOG_MESSAGES['variant_selected'].format(variant=selected_variant.upper()))
     logger.debug(LOG_MESSAGES['data_source_selected'].format(
         source=config['data_source'], 
         format=config['input_format']
@@ -1169,17 +1212,17 @@ def generate_leaders_for_admin_script(data_list=None):
     Returns:
         str: Сгенерированный JavaScript скрипт
     """
-    logger.info("=== ГЕНЕРАЦИЯ СКРИПТА: LeadersForAdmin ===")
-    logger.debug(f"[START] generate_leaders_for_admin_script args=({data_list}), kwargs=[]")
+    logger.info(LOG_MESSAGES['script_generation_start'].format(script_name="LeadersForAdmin"))
+    logger.debug(LOG_MESSAGES['function_start'].format(func="generate_leaders_for_admin_script", params=f"args=({data_list}), kwargs=[]"))
     
     # Загрузка данных и конфигурации
-    logger.info("Загрузка данных и конфигурации...")
+    logger.info(LOG_MESSAGES['data_loading'])
     config, data_list, selected_variant, variant_config = load_script_data("leaders_for_admin", data_list)
     
-    logger.info(f"Конфигурация загружена: {len(data_list)} элементов")
-    logger.debug(f"Выбранный вариант: {selected_variant}")
-    logger.debug(f"Домен: {variant_config['domain']}")
-    logger.debug(f"API путь: {variant_config['params']['api_path']}")
+    logger.info(LOG_MESSAGES['config_loaded_count'].format(count=len(data_list)))
+    logger.debug(LOG_MESSAGES['variant_selected'].format(variant=selected_variant))
+    logger.debug(LOG_MESSAGES['domain_info'].format(domain=variant_config['domain']))
+    logger.debug(LOG_MESSAGES['api_path_info'].format(api_path=variant_config['params']['api_path']))
     
     # Генерация JavaScript скрипта для LeadersForAdmin
     script = f"""// ==UserScript==
@@ -1277,11 +1320,11 @@ def generate_leaders_for_admin_script(data_list=None):
 }})();"""
     
     # Сохранение и копирование скрипта
-    logger.info("Сохранение скрипта в файл...")
+    logger.info(LOG_MESSAGES['script_saving'])
     save_and_copy_script(script, config, "leaders_for_admin", data_list)
     
-    logger.info(f"Скрипт LeadersForAdmin сгенерирован успешно (данных: {len(data_list)})")
-    logger.debug(f"[END] generate_leaders_for_admin_script args=(), kwargs=[]")
+    logger.info(LOG_MESSAGES['script_generated_success'].format(script_name="LeadersForAdmin", count=len(data_list)))
+    logger.debug(LOG_MESSAGES['function_completed'].format(func="generate_leaders_for_admin_script", params="args=(), kwargs=[]", time="0.0000"))
     return script
 
 @measure_time
@@ -1293,19 +1336,19 @@ def generate_reward_script(data_list=None):
     Returns:
         str: Сгенерированный JavaScript скрипт
     """
-    logger.info("=== ГЕНЕРАЦИЯ СКРИПТА: Reward ===")
-    logger.debug(f"[START] generate_reward_script args=({data_list}), kwargs=[]")
+    logger.info(LOG_MESSAGES['script_generation_start'].format(script_name="Reward"))
+    logger.debug(LOG_MESSAGES['function_start'].format(func="generate_reward_script", params=f"args=({data_list}), kwargs=[]"))
     
     import datetime
     import json
     
-    logger.info("Загрузка данных и конфигурации...")
+    logger.info(LOG_MESSAGES['data_loading'])
     config, data_list, selected_variant, variant_config = load_script_data("reward", data_list)
     
-    logger.info(f"Конфигурация загружена: {len(data_list)} элементов")
-    logger.debug(f"Выбранный вариант: {selected_variant}")
-    logger.debug(f"Домен: {variant_config['domain']}")
-    logger.debug(f"API путь: {variant_config['params']['api_path']}")
+    logger.info(LOG_MESSAGES['config_loaded_count'].format(count=len(data_list)))
+    logger.debug(LOG_MESSAGES['variant_selected'].format(variant=selected_variant))
+    logger.debug(LOG_MESSAGES['domain_info'].format(domain=variant_config['domain']))
+    logger.debug(LOG_MESSAGES['api_path_info'].format(api_path=variant_config['params']['api_path']))
     
     delay = variant_config.get('delay_between_requests', 5)
     max_retries = variant_config.get('retry_count', 3)
@@ -1315,11 +1358,11 @@ def generate_reward_script(data_list=None):
     service = variant_config['params']['service']
     base_url = f"{domain}{api_path}"
     
-    logger.debug(f"Параметры запросов: delay={delay}, max_retries={max_retries}, timeout={timeout}")
-    logger.debug(f"Базовый URL: {base_url}")
+    logger.debug(LOG_MESSAGES['request_params'].format(delay=delay, max_retries=max_retries, timeout=timeout))
+    logger.debug(LOG_MESSAGES['base_url_info'].format(base_url=base_url))
     
     ids_string = ', '.join([f'"{item}"' for item in data_list])
-    logger.debug(f"Строка IDs сгенерирована: {len(data_list)} элементов")
+    logger.debug(LOG_MESSAGES['ids_generated'].format(count=len(data_list)))
     script = f'''// ==UserScript==
 // Скрипт для DevTools. Выгрузка профилей участников по кодам наград с пагинацией
 // Вариант: {selected_variant.upper()}
@@ -1394,8 +1437,15 @@ def generate_reward_script(data_list=None):
       }});
       const firstData = await firstResp.json();
       const count = extractContestantsCount(firstData?.body?.badge?.contestants);
+      console.log(`👥 Участников: ${{count}}`);
+      
+      if (count === 0) {{
+        console.log(`⏭️ Пропускаем ${{code}} - нет участников`);
+        continue;
+      }}
+      
       const pages = Math.ceil(count / 100) || 1;
-      console.log(`👥 Участников: ${{count}}, Страниц: ${{pages}}`);
+      console.log(`📄 Страниц: ${{pages}}`);
       let profiles = [];
       for (let page = 1; page <= pages; page++) {{
         const url = `${{baseUrl}}?pageNum=${{page}}&divisionLevel=BANK`;
@@ -1433,11 +1483,11 @@ def generate_reward_script(data_list=None):
   console.log(`\\n✅ Завершено. Всего профилей: ${{totalProfiles}}`);
 }})();
 '''
-    logger.info("Сохранение скрипта в файл...")
+    logger.info(LOG_MESSAGES['script_saving'])
     save_script_to_file(script, config['name'], "reward")
     
-    logger.info(f"Скрипт Reward сгенерирован успешно (данных: {len(data_list)})")
-    logger.debug(f"[END] generate_reward_script args=(), kwargs=[]")
+    logger.info(LOG_MESSAGES['script_generated_success'].format(script_name="Reward", count=len(data_list)))
+    logger.debug(LOG_MESSAGES['function_completed'].format(func="generate_reward_script", params="args=(), kwargs=[]", time="0.0000"))
     return script
 
 def generate_profile_script(data_list=None):
@@ -1544,7 +1594,7 @@ def load_json_data(input_json_path):
             json_data = json.load(f)
         return json_data
     except Exception as e:
-        logger.error(f"Ошибка при загрузке JSON файла {input_json_path}: {e}")
+        logger.error(LOG_MESSAGES['json_load_error'].format(file_path=input_json_path, error=e))
         return None
 
 def save_excel_file(df, output_excel_path, config_key=None):
@@ -1592,7 +1642,7 @@ def save_excel_file(df, output_excel_path, config_key=None):
         return True
         
     except Exception as e:
-        logger.error(f"Ошибка при создании Excel файла: {e}")
+        logger.error(LOG_MESSAGES['excel_creation_error'].format(error=e))
         return False
 
 @measure_time
@@ -1654,7 +1704,7 @@ def convert_leaders_json_to_excel(input_json_path, output_excel_path, config_key
                                     total_leaders += len(tournament_leaders)
                                     logger.debug(LOG_MESSAGES['json_leaders_found'].format(key=tournament_key, count=len(tournament_leaders)))
             
-            logger.info(f"Обработано турниров: {total_tournaments}, общее количество лидеров: {total_leaders}")
+            logger.info(LOG_MESSAGES['tournaments_processed'].format(tournaments=total_tournaments, leaders=total_leaders))
             leaders_data = all_leaders_data
             
         elif isinstance(json_data, list):
@@ -1679,7 +1729,7 @@ def convert_leaders_json_to_excel(input_json_path, output_excel_path, config_key
         df = pd.DataFrame(flattened_data)
         
         if df.empty:
-            logger.warning("Нет данных для обработки")
+            logger.warning(LOG_MESSAGES['no_data_warning'])
             return False
         
         logger.info(LOG_MESSAGES['json_records_processed'].format(count=len(df)))
@@ -1688,7 +1738,7 @@ def convert_leaders_json_to_excel(input_json_path, output_excel_path, config_key
         return save_excel_file(df, output_excel_path, config_key)
         
     except Exception as e:
-        logger.error(f"Ошибка при конвертации JSON лидеров в Excel: {e}")
+        logger.error(LOG_MESSAGES['json_leaders_conversion_error'].format(error=e))
         return False
 
 def extract_profiles_from_data(data, structure):
@@ -1732,7 +1782,7 @@ def extract_profiles_from_data(data, structure):
         
         return None
     except Exception as e:
-        logger.error(f"Ошибка при извлечении профилей из данных: {e}")
+        logger.error(LOG_MESSAGES['profile_extraction_error'].format(error=e))
         return None
 
 @measure_time
@@ -1800,7 +1850,8 @@ def convert_reward_json_to_excel(input_json_path, output_excel_path, config_key=
                         
                         total_rewards += 1
                         total_profiles += len(profiles)
-                        logger.info(f"Найдено профилей для кода награды {reward_code}: {len(profiles)} (структура: {structure})")
+                        logger.debug(LOG_MESSAGES['json_reward_found'].format(key=reward_code, count=len(profiles)))
+                        logger.info(LOG_MESSAGES['reward_profiles_found'].format(code=reward_code, count=len(profiles), structure=structure))
                 
                 # Старая структура данных (для обратной совместимости)
                 elif isinstance(reward_value, list) and len(reward_value) > 0:
@@ -1839,21 +1890,22 @@ def convert_reward_json_to_excel(input_json_path, output_excel_path, config_key=
                             
                             total_rewards += 1
                             total_profiles += len(profiles)
-                            logger.info(f"Найдено профилей для кода награды {reward_code}: {len(profiles)} (старая структура)")
+                            logger.debug(LOG_MESSAGES['json_reward_found'].format(key=reward_code, count=len(profiles)))
+                            logger.info(LOG_MESSAGES['reward_profiles_found_old'].format(code=reward_code, count=len(profiles)))
             
-            logger.info(f"Обработано кодов наград: {total_rewards}, общее количество профилей: {total_profiles}")
+            logger.info(LOG_MESSAGES['rewards_processed'].format(rewards=total_rewards, profiles=total_profiles))
             profiles_data = all_profiles_data
             
         elif isinstance(json_data, list):
             # Прямой список профилей
             profiles_data = json_data
-            logger.info(f"Прямой список профилей: {len(profiles_data)}")
+            logger.info(LOG_MESSAGES['direct_profiles_list'].format(count=len(profiles_data)))
         else:
             logger.error(LOG_MESSAGES['json_invalid_format'])
             return False
         
         if not profiles_data:
-            logger.error("Не найдено данных профилей")
+            logger.error(LOG_MESSAGES['no_profiles_error'])
             return False
         
         # Преобразование данных в плоскую структуру
@@ -1866,7 +1918,7 @@ def convert_reward_json_to_excel(input_json_path, output_excel_path, config_key=
         df = pd.DataFrame(flattened_data)
         
         if df.empty:
-            logger.warning("Нет данных для обработки")
+            logger.warning(LOG_MESSAGES['no_data_warning'])
             return False
         
         logger.info(LOG_MESSAGES['json_records_processed'].format(count=len(df)))
@@ -1875,7 +1927,7 @@ def convert_reward_json_to_excel(input_json_path, output_excel_path, config_key=
         return save_excel_file(df, output_excel_path, config_key)
         
     except Exception as e:
-        logger.error(f"Ошибка при конвертации JSON наград в Excel: {e}")
+        logger.error(LOG_MESSAGES['json_reward_conversion_error'].format(error=e))
         return False
 
 @measure_time
@@ -1937,7 +1989,7 @@ def convert_specific_json_file(file_name_without_extension, config_key=None):
         output_excel_path = os.path.join(output_dir, excel_filename)
         
         logger.info(LOG_MESSAGES['json_file_processing'].format(file_name=file_name_without_extension))
-        logger.info(f"Создаем Excel файл: {excel_filename}")
+        logger.info(LOG_MESSAGES['excel_file_creation'].format(filename=excel_filename))
         
         # Конвертируем файл
         if convert_json_to_excel(input_json_path, output_excel_path, config_key):
@@ -1994,7 +2046,7 @@ def print_summary():
     summary_text = "\n".join(summary_lines)
     
     # Вывод в консоль и лог
-    print(summary_text)
+    logger.info(LOG_MESSAGES['summary_output'].format(summary=summary_text))
     logger.info(LOG_MESSAGES['summary_title'])
     logger.info(LOG_MESSAGES['total_time'].format(time=total_time) + f", {LOG_MESSAGES['actions_processed'].format(count=processed_actions_count)}, {LOG_MESSAGES['functions_executed'].format(count=len(function_execution_times))}")
     
@@ -2026,30 +2078,30 @@ def main():
     
     # Стартовое сообщение с разделителями для читаемости
     start_time_str = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
-    logger.info("=" * 70)
+    logger.info(LOG_MESSAGES['separator_line'])
     logger.info(LOG_MESSAGES['program_start'].format(time=start_time_str))
     logger.info(LOG_MESSAGES['processing_start_time'].format(time=start_time_str))
     logger.info(LOG_MESSAGES['logging_level'].format(level=LOG_LEVEL))
-    logger.info("=" * 70)
+    logger.info(LOG_MESSAGES['separator_line'])
     
     try:
         # Выполнение операций для каждого активного скрипта
         if ACTIVE_SCRIPTS:
-            logger.info(f"Активные скрипты: {', '.join(ACTIVE_SCRIPTS)}")
+            logger.info(LOG_MESSAGES['active_scripts_info'].format(scripts=', '.join(ACTIVE_SCRIPTS)))
             
             # ПЕРВЫЙ ЭТАП: Генерация всех скриптов
-            logger.info("=== ЭТАП 1: ГЕНЕРАЦИЯ СКРИПТОВ ===")
+            logger.info(LOG_MESSAGES['stage1_title'])
             for script_name in ACTIVE_SCRIPTS:
                 if script_name in FUNCTION_CONFIGS:
                     config = FUNCTION_CONFIGS[script_name]
                     active_operations = config.get("active_operations", "scripts_only")
                     
-                    logger.info(f"--- ОБРАБОТКА СКРИПТА: {script_name} ---")
-                    logger.info(f"Активные операции для {script_name}: {active_operations}")
+                    logger.info(LOG_MESSAGES['script_processing'].format(script_name=script_name))
+                    logger.info(LOG_MESSAGES['active_operations_info'].format(script_name=script_name, operations=active_operations))
                     
                     # Генерация скриптов
                     if active_operations in ["scripts_only", "both"]:
-                        logger.info(f"Генерация скрипта: {script_name}")
+                        logger.info(LOG_MESSAGES['script_generation_info'].format(script_name=script_name))
                         if script_name == "leaders_for_admin":
                             generate_leaders_for_admin_script()
                         elif script_name == "reward":
@@ -2071,12 +2123,12 @@ def main():
                         else:
                             generate_script_universal(script_name)
                     else:
-                        logger.info(f"Пропуск генерации скрипта для {script_name} (режим: {active_operations})")
+                        logger.info(LOG_MESSAGES['script_generation_skipped'].format(script_name=script_name, operations=active_operations))
                 else:
-                    logger.error(f"Неизвестный скрипт: {script_name}")
+                    logger.error(LOG_MESSAGES['unknown_script_error'].format(script_name=script_name))
             
             # ВТОРОЙ ЭТАП: Обработка всех JSON файлов
-            logger.info("=== ЭТАП 2: ОБРАБОТКА JSON ФАЙЛОВ ===")
+            logger.info(LOG_MESSAGES['stage2_title'])
             for script_name in ACTIVE_SCRIPTS:
                 if script_name in FUNCTION_CONFIGS:
                     config = FUNCTION_CONFIGS[script_name]
@@ -2086,14 +2138,14 @@ def main():
                     if active_operations in ["json_only", "both"]:
                         if "json_file" in config:
                             json_file = config["json_file"]
-                            logger.info(f"Обработка JSON файла: {json_file}")
+                            logger.info(LOG_MESSAGES['json_file_processing_info'].format(json_file=json_file))
                             convert_specific_json_file(json_file, script_name)
                         else:
-                            logger.warning(f"Для скрипта {script_name} не указан json_file")
+                            logger.warning(LOG_MESSAGES['no_json_file_warning'].format(script_name=script_name))
                     else:
-                        logger.info(f"Пропуск обработки JSON для {script_name} (режим: {active_operations})")
+                        logger.info(LOG_MESSAGES['json_processing_skipped'].format(script_name=script_name, operations=active_operations))
         else:
-            logger.info("Нет активных скриптов для обработки. Настройте ACTIVE_SCRIPTS.")
+            logger.info(LOG_MESSAGES['no_active_scripts'])
             
         # Альтернативный способ - ручной вызов конкретных функций
         # Раскомментируйте нужные строки для тестирования
@@ -2114,10 +2166,10 @@ def main():
         # Финальное сообщение
         end_time_str = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S.%f')[:-3]
         total_time = time.time() - program_start_time
-        logger.info("=" * 70)
+        logger.info(LOG_MESSAGES['separator_line'])
         logger.info(LOG_MESSAGES['program_end'].format(time=end_time_str))
         logger.info(LOG_MESSAGES['total_execution_time'].format(time=total_time))
-        logger.info("=" * 70)
+        logger.info(LOG_MESSAGES['separator_line'])
 
 # Точка входа в программу
 if __name__ == "__main__":
