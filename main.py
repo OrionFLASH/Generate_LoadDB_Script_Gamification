@@ -254,7 +254,14 @@ LOG_MESSAGES = {
     "summary_output": "Итоговая статистика работы программы:\n{summary}",  # Ключ: итоговая статистика
     "reward_profiles_leaders_found": "Найдены лидеры для кода награды {code}: {count} (структура: {structure})",  # Ключ: найдены лидеры наград
     "reward_profiles_leaders_processed": "Обработано кодов наград: {rewards}, общее количество лидеров: {leaders}",  # Ключ: лидеры наград обработаны
-    "json_reward_profiles_conversion_error": "Ошибка при конвертации JSON профилей наград в Excel: {error}"  # Ключ: ошибка конвертации профилей наград
+    "json_reward_profiles_conversion_error": "Ошибка при конвертации JSON профилей наград в Excel: {error}",  # Ключ: ошибка конвертации профилей наград
+    "delay_between_response_and_request": "Задержка между ответом и следующим запросом: {delay} мс",  # Ключ: задержка между ответом и запросом
+    "photo_data_removal_enabled": "Удаление photoData включено в настройках",  # Ключ: удаление photoData включено
+    "photo_data_removal_disabled": "Удаление photoData отключено в настройках",  # Ключ: удаление photoData отключено
+    "photo_data_removing": "Удаляем поля photoData из результатов",  # Ключ: удаление photoData
+    "photo_data_removed": "Поля photoData удалены из результатов",  # Ключ: photoData удалены
+    "delay_after_response": "Ожидание {delay} мс после получения ответа",  # Ключ: ожидание после ответа
+    "next_request_after_delay": "Выполнение следующего запроса после задержки {delay} мс"  # Ключ: следующий запрос после задержки
 }
 
 # =============================================================================
@@ -292,9 +299,9 @@ FUNCTION_CONFIGS = {
         },
         "timeout": 30000,  # Ключ: таймаут запроса в миллисекундах (общий для всех вариантов)
         "retry_count": 3,  # Ключ: количество попыток при ошибке (общий для всех вариантов)
-        "delay_between_requests": 2,  # Ключ: задержка между запросами в секундах (общий для всех вариантов)
+        "delay_between_requests": 3,  # Ключ: задержка между ответом и следующим запросом в миллисекундах (общий для всех вариантов)
         "processing_options": {  # Ключ: опции обработки данных
-            "remove_photo_data": False,  # Ключ: удалять ли поля photoData из результатов
+            "remove_photo_data": True,  # Ключ: удалять ли поля photoData из JSON файла (JavaScript)
             "include_division_ratings": True,  # Ключ: включать ли рейтинги подразделений
             "include_tournament_info": True  # Ключ: включать ли информацию о турнирах
         },
@@ -319,7 +326,7 @@ FUNCTION_CONFIGS = {
             "column_settings": {  # Ключ: настройки обработки колонок
                 "columns_to_keep": [],  # Ключ: колонки для сохранения (если пусто - оставляем все)
                 "columns_to_remove": [  # Ключ: колонки для удаления
-                    "photoData"
+                   "photoData"  # Удаление photoData из Excel (независимо от JavaScript)
                 ],
                 "numeric_conversions": {  # Ключ: преобразования в числовой формат
                     "float_fields": {  # Ключ: группа полей для преобразования в дробные числа
@@ -363,7 +370,7 @@ FUNCTION_CONFIGS = {
         },
         "timeout": 30000,  # Ключ: таймаут запроса в миллисекундах (общий для всех вариантов)
         "retry_count": 3,  # Ключ: количество попыток при ошибке (общий для всех вариантов)
-        "delay_between_requests": 2,  # Ключ: задержка между запросами в секундах (общий для всех вариантов)
+        "delay_between_requests": 3,  # Ключ: задержка между ответом и следующим запросом в миллисекундах (общий для всех вариантов)
         "data_source": "external_file",  # Ключ: источник данных (file/variable/external_file)
         "input_format": "CSV",  # Ключ: формат входного файла
         "csv_column": "REWARD_CODE",  # Ключ: название столбца для извлечения данных
@@ -376,7 +383,7 @@ FUNCTION_CONFIGS = {
             "test_reward_3"   # Тестовая награда 3
         ],
         "processing_options": {  # Ключ: опции обработки данных
-            "remove_photo_data": False,  # Ключ: удалять ли поля photoData из результатов
+            "remove_photo_data": True,  # Ключ: удалять ли поля photoData из JSON файла (JavaScript)
             "include_division_ratings": True,  # Ключ: включать ли рейтинги подразделений
             "include_badge_info": True,  # Ключ: включать ли информацию о наградах
             "max_profiles_per_request": 100,  # Ключ: максимальное количество профилей на запрос
@@ -398,7 +405,7 @@ FUNCTION_CONFIGS = {
                     "tag3_id", "tag3_name", "tag3_color",
                     "tag4_id", "tag4_name", "tag4_color",
                     "tag5_id", "tag5_name", "tag5_color",
-                    "photoData"
+                    "photoData"  # Удаление photoData из Excel (независимо от JavaScript)
                 ],
                 "numeric_conversions": {  # Ключ: преобразования в числовой формат
                     "integer_fields": {  # Ключ: группа полей для преобразования в целые числа
@@ -926,6 +933,7 @@ def flatten_leader_data(leader_data):
     flattened['employeeNumber'] = leader_data.get('employeeNumber', '')
     flattened['lastName'] = leader_data.get('lastName', '')
     flattened['firstName'] = leader_data.get('firstName', '')
+    flattened['photoData'] = leader_data.get('photoData', '')  # Добавляем photoData
     flattened['indicatorValue'] = leader_data.get('indicatorValue', '')
     flattened['successValue'] = leader_data.get('successValue', '')
     flattened['terDivisionName'] = leader_data.get('terDivisionName', '')
@@ -998,6 +1006,7 @@ def flatten_reward_profile_data(profile_data):
     flattened['firstName'] = profile_data.get('firstName', '')
     flattened['middleName'] = profile_data.get('middleName', '')
     flattened['fullName'] = profile_data.get('fullName', '')
+    flattened['photoData'] = profile_data.get('photoData', '')  # Добавляем photoData
     
     # Контактная информация
     flattened['email'] = profile_data.get('email', '')
@@ -1081,6 +1090,7 @@ def flatten_reward_leader_data(leader_data, reward_code):
     flattened['employeeNumber'] = leader_data.get('employeeNumber', '')
     flattened['lastName'] = leader_data.get('lastName', '')
     flattened['firstName'] = leader_data.get('firstName', '')
+    flattened['photoData'] = leader_data.get('photoData', '')  # Добавляем photoData
     flattened['terDivisionName'] = leader_data.get('terDivisionName', '')
     flattened['gosbCode'] = leader_data.get('gosbCode', '')
     flattened['employeeStatus'] = leader_data.get('employeeStatus', '')
@@ -1413,7 +1423,7 @@ def generate_leaders_for_admin_script(data_list=None):
     max_profiles_per_request = config.get('processing_options', {}).get('max_profiles_per_request', 100)
     
     script_logger.debug(LOG_MESSAGES['request_params'].format(delay=delay, max_retries=max_retries, timeout=timeout))
-    script_logger.debug(f"Удаление photoData: {remove_photo_data}")
+    script_logger.debug(LOG_MESSAGES['photo_data_removal_enabled'] if remove_photo_data else LOG_MESSAGES['photo_data_removal_disabled'])
     script_logger.debug(f"Максимум профилей на запрос: {max_profiles_per_request}")
     
     # Генерируем скрипты для всех вариантов
@@ -1497,7 +1507,10 @@ def generate_leaders_for_admin_script(data_list=None):
       console.log(`✅ [${{i+1}}/${{ids.length}}] Код ${{tid}}: успешно, участников: ${{leadersCount}}`);
       results[tid] = [data];
       processed++;
-      await new Promise(r => setTimeout(r, {delay} * 1000));
+      // Задержка между ответом и следующим запросом
+      if (i < ids.length - 1) {{
+        await new Promise(r => setTimeout(r, {delay}));
+      }}
     }} catch (e) {{
       console.error(`❌ [${{i+1}}/${{ids.length}}] Код ${{tid}}: Ошибка запроса:`, e);
       errors++;
@@ -1570,7 +1583,7 @@ def generate_reward_script(data_list=None):
     max_profiles_per_request = config.get('processing_options', {}).get('max_profiles_per_request', 100)
     
     script_logger.debug(LOG_MESSAGES['request_params'].format(delay=delay, max_retries=max_retries, timeout=timeout))
-    script_logger.debug(f"Удаление photoData: {remove_photo_data}")
+    script_logger.debug(LOG_MESSAGES['photo_data_removal_enabled'] if remove_photo_data else LOG_MESSAGES['photo_data_removal_disabled'])
     script_logger.debug(f"Максимум профилей на запрос: {max_profiles_per_request}")
     
     # Генерируем скрипты для всех вариантов
@@ -1711,9 +1724,9 @@ def generate_reward_script(data_list=None):
             totalProfiles += (pageData?.body?.badge?.profiles?.length || 0);
             console.log(`✅ [${{i + 1}}/${{ids.length}}] Код: ${{code}} - Страница ${{page}}/${{pagesCount}} - Успешно`);
             
-            // Задержка между запросами страниц
+            // Задержка между ответом и следующим запросом страницы
             if (page < pagesCount) {{
-              await new Promise(resolve => setTimeout(resolve, {delay} * 1000));
+              await new Promise(resolve => setTimeout(resolve, {delay}));
             }}
           }} catch (pageError) {{
             console.error(`❌ [${{i + 1}}/${{ids.length}}] Код: ${{code}} - Страница ${{page}} - Ошибка:`, pageError);
@@ -1727,9 +1740,9 @@ def generate_reward_script(data_list=None):
       console.error(`❌ [${{i + 1}}/${{ids.length}}] Код: ${{code}} - Критическая ошибка:`, e);
     }}
     
-    // Задержка между кодами
+    // Задержка между ответом и следующим кодом
     if (i < ids.length - 1) {{
-      await new Promise(resolve => setTimeout(resolve, {delay} * 1000));
+      await new Promise(resolve => setTimeout(resolve, {delay}));
     }}
   }}
 
