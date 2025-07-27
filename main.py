@@ -24,6 +24,7 @@ from functools import wraps
 from openpyxl.styles import PatternFill, Font, Alignment
 from openpyxl.utils import get_column_letter
 from openpyxl.formatting.rule import ColorScaleRule, CellIsRule
+from pandas.core.missing import F
 
 # =============================================================================
 # ГЛОБАЛЬНЫЕ НАСТРОЙКИ ПРОГРАММЫ
@@ -293,7 +294,7 @@ FUNCTION_CONFIGS = {
         "retry_count": 3,  # Ключ: количество попыток при ошибке (общий для всех вариантов)
         "delay_between_requests": 2,  # Ключ: задержка между запросами в секундах (общий для всех вариантов)
         "processing_options": {  # Ключ: опции обработки данных
-            "remove_photo_data": True,  # Ключ: удалять ли поля photoData из результатов
+            "remove_photo_data": False,  # Ключ: удалять ли поля photoData из результатов
             "include_division_ratings": True,  # Ключ: включать ли рейтинги подразделений
             "include_tournament_info": True  # Ключ: включать ли информацию о турнирах
         },
@@ -312,12 +313,13 @@ FUNCTION_CONFIGS = {
             "name": "Leaders Processing",  # Ключ: название скрипта для отображения
             "description": "Обработка лидеров турниров из JSON в Excel",  # Ключ: описание назначения скрипта
             "active_operations": "json_only",  # Ключ: активные операции ("scripts_only", "json_only", "both")
-            "json_file": "leadersForAdmin_SIGMA_20250727-130522",  # Ключ: имя JSON файла для обработки (без расширения)
+            "json_file": "leadersForAdmin_SIGMA_20250728-001537",  # Ключ: имя JSON файла для обработки (без расширения)
             "excel_file": "LeadersForAdmin",  # Ключ: имя Excel файла для создания (без расширения)
             "excel_freeze_cell": "B2",  # Ключ: ячейка для закрепления в Excel (B2 = первая строка и первая колонка)
             "column_settings": {  # Ключ: настройки обработки колонок
                 "columns_to_keep": [],  # Ключ: колонки для сохранения (если пусто - оставляем все)
                 "columns_to_remove": [  # Ключ: колонки для удаления
+                    "photoData"
                 ],
                 "numeric_conversions": {  # Ключ: преобразования в числовой формат
                     "float_fields": {  # Ключ: группа полей для преобразования в дробные числа
@@ -374,7 +376,7 @@ FUNCTION_CONFIGS = {
             "test_reward_3"   # Тестовая награда 3
         ],
         "processing_options": {  # Ключ: опции обработки данных
-            "remove_photo_data": True,  # Ключ: удалять ли поля photoData из результатов
+            "remove_photo_data": False,  # Ключ: удалять ли поля photoData из результатов
             "include_division_ratings": True,  # Ключ: включать ли рейтинги подразделений
             "include_badge_info": True,  # Ключ: включать ли информацию о наградах
             "max_profiles_per_request": 100,  # Ключ: максимальное количество профилей на запрос
@@ -384,7 +386,7 @@ FUNCTION_CONFIGS = {
             "name": "Reward Profiles",  # Ключ: название скрипта для отображения
             "description": "Обработка профилей наград из JSON в Excel",  # Ключ: описание назначения скрипта
             "active_operations": "json_only",  # Ключ: активные операции ("scripts_only", "json_only", "both")
-            "json_file": "profiles_SIGMA_20250727-130833",  # Ключ: имя JSON файла для обработки (без расширения)
+            "json_file": "profiles_SIGMA_20250728-001708",  # Ключ: имя JSON файла для обработки (без расширения)
             "excel_file": "RewardProfiles",  # Ключ: имя Excel файла для создания (без расширения)
             "excel_freeze_cell": "F2",  # Ключ: ячейка для закрепления в Excel (B2 = первая строка и первая колонка)
             "column_settings": {  # Ключ: настройки обработки колонок
@@ -395,7 +397,8 @@ FUNCTION_CONFIGS = {
                     "tag2_id", "tag2_name", "tag2_color", 
                     "tag3_id", "tag3_name", "tag3_color",
                     "tag4_id", "tag4_name", "tag4_color",
-                    "tag5_id", "tag5_name", "tag5_color"
+                    "tag5_id", "tag5_name", "tag5_color",
+                    "photoData"
                 ],
                 "numeric_conversions": {  # Ключ: преобразования в числовой формат
                     "integer_fields": {  # Ключ: группа полей для преобразования в целые числа
@@ -2666,39 +2669,46 @@ def convert_reward_json_to_excel(input_json_path, output_excel_path, config_key=
             
             for reward_code, reward_value in json_data.items():
                 script_logger.debug(f"Обрабатываем код награды: {reward_code}, тип значения: {type(reward_value)}")
-                # Новая структура данных (список как в leaders)
+                # Новая структура данных (список как в leaders) - ОБРАБАТЫВАЕМ ВСЕ СТРАНИЦЫ
                 if isinstance(reward_value, list) and len(reward_value) > 0:
-                    first_data = reward_value[0]
-                    if isinstance(first_data, dict) and 'body' in first_data:
-                        body = first_data.get('body', {})
-                        badge = body.get('badge', {})
-                        profiles = badge.get('profiles', [])
-                        badge_info = badge
-                        
-                        script_logger.debug(f"Обрабатываем структуру массива для {reward_code}: профилей={len(profiles)}")
-                        
-                        if profiles and len(profiles) > 0:
-                            # Добавляем информацию о коде награды и данных награды к каждому профилю
-                            for profile in profiles:
-                                if isinstance(profile, dict):
-                                    profile_with_reward = profile.copy()
-                                    profile_with_reward['rewardCode'] = reward_code
-                                    
-                                    # Добавляем информацию о награде
-                                    if badge_info:
-                                        profile_with_reward['badgeName'] = badge_info.get('name', '')
-                                        profile_with_reward['badgeDescription'] = badge_info.get('description', '')
-                                        profile_with_reward['badgeType'] = badge_info.get('type', '')
-                                        profile_with_reward['badgeCategory'] = badge_info.get('category', '')
-                                    
-                                    all_profiles_data.append(profile_with_reward)
+                    script_logger.debug(f"Обрабатываем массив из {len(reward_value)} страниц для {reward_code}")
+                    
+                    # Обрабатываем все страницы в массиве
+                    for page_index, page_data in enumerate(reward_value):
+                        if isinstance(page_data, dict) and 'body' in page_data:
+                            body = page_data.get('body', {})
+                            badge = body.get('badge', {})
+                            profiles = badge.get('profiles', [])
+                            badge_info = badge
                             
-                            total_rewards += 1
-                            total_profiles += len(profiles)
-                            script_logger.debug(LOG_MESSAGES['json_reward_found'].format(key=reward_code, count=len(profiles)))
-                            script_logger.info(f"Найдено профилей для кода награды {reward_code}: {len(profiles)} (структура массива)")
-                        else:
-                            script_logger.debug(f"Профили пусты для {reward_code}: {len(profiles)} профилей")
+                            script_logger.debug(f"Страница {page_index + 1}/{len(reward_value)} для {reward_code}: профилей={len(profiles)}")
+                            
+                            if profiles and len(profiles) > 0:
+                                # Добавляем информацию о коде награды и данных награды к каждому профилю
+                                for profile in profiles:
+                                    if isinstance(profile, dict):
+                                        profile_with_reward = profile.copy()
+                                        profile_with_reward['rewardCode'] = reward_code
+                                        profile_with_reward['pageNumber'] = page_index + 1  # Добавляем номер страницы
+                                        
+                                        # Добавляем информацию о награде
+                                        if badge_info:
+                                            profile_with_reward['badgeName'] = badge_info.get('name', '')
+                                            profile_with_reward['badgeDescription'] = badge_info.get('description', '')
+                                            profile_with_reward['badgeType'] = badge_info.get('type', '')
+                                            profile_with_reward['badgeCategory'] = badge_info.get('category', '')
+                                        
+                                        all_profiles_data.append(profile_with_reward)
+                                
+                                total_profiles += len(profiles)
+                                script_logger.debug(f"Страница {page_index + 1}: добавлено {len(profiles)} профилей")
+                            else:
+                                script_logger.debug(f"Страница {page_index + 1}: профили пусты для {reward_code}")
+                    
+                    total_rewards += 1
+                    total_profiles_for_reward = sum(len(page_data.get('body', {}).get('badge', {}).get('profiles', [])) for page_data in reward_value if isinstance(page_data, dict) and 'body' in page_data)
+                    script_logger.debug(LOG_MESSAGES['json_reward_found'].format(key=reward_code, count=total_profiles_for_reward))
+                    script_logger.info(f"Найдено профилей для кода награды {reward_code}: {total_profiles_for_reward} (все страницы: {len(reward_value)})")
                 
                 # Старая структура данных (прямая структура с profiles)
                 elif isinstance(reward_value, dict) and 'profiles' in reward_value:
@@ -2762,59 +2772,6 @@ def convert_reward_json_to_excel(input_json_path, output_excel_path, config_key=
                         total_profiles += len(profiles)
                         script_logger.debug(LOG_MESSAGES['json_reward_found'].format(key=reward_code, count=len(profiles)))
                         script_logger.info(LOG_MESSAGES['reward_profiles_found'].format(code=reward_code, count=len(profiles), structure=structure))
-                
-                # Старая структура данных (для обратной совместимости)
-                elif isinstance(reward_value, list) and len(reward_value) > 0:
-                    # Проверяем, содержит ли первый элемент данные о награде
-                    first_item = reward_value[0]
-                    script_logger.debug(f"Обрабатываем reward_value для {reward_code}: тип={type(reward_value)}, длина={len(reward_value)}")
-                    script_logger.debug(f"Первый элемент: тип={type(first_item)}, ключи={list(first_item.keys()) if isinstance(first_item, dict) else 'не словарь'}")
-                    
-                    if isinstance(first_item, dict) and 'body' in first_item:
-                        body = first_item['body']
-                        script_logger.debug(f"Найден body: ключи={list(body.keys()) if isinstance(body, dict) else 'не словарь'}")
-                        
-                        # Проверяем разные возможные структуры данных
-                        profiles = None
-                        badge_info = None
-                        
-                        # Структура 1: body.badge.profiles
-                        if 'badge' in body and 'profiles' in body['badge']:
-                            profiles = body['badge']['profiles']
-                            badge_info = body['badge']
-                            script_logger.debug(f"Найдена структура body.badge.profiles: количество профилей={len(profiles) if profiles else 0}")
-                        # Структура 2: body.profiles (прямые профили)
-                        elif 'profiles' in body:
-                            profiles = body['profiles']
-                            badge_info = body
-                            script_logger.debug(f"Найдена структура body.profiles: количество профилей={len(profiles) if profiles else 0}")
-                        else:
-                            script_logger.debug(f"Не найдена структура profiles в body")
-                        
-                        if profiles and isinstance(profiles, list):
-                            # Добавляем информацию о коде награды и данных награды к каждому профилю
-                            for profile in profiles:
-                                if isinstance(profile, dict):
-                                    profile_with_reward = profile.copy()
-                                    profile_with_reward['rewardCode'] = reward_code
-                                    
-                                    # Добавляем информацию о награде
-                                    if badge_info:
-                                        profile_with_reward['badgeName'] = badge_info.get('name', '')
-                                        profile_with_reward['badgeDescription'] = badge_info.get('description', '')
-                                        profile_with_reward['badgeType'] = badge_info.get('type', '')
-                                        profile_with_reward['badgeCategory'] = badge_info.get('category', '')
-                                    
-                                    all_profiles_data.append(profile_with_reward)
-                            
-                            total_rewards += 1
-                            total_profiles += len(profiles)
-                            script_logger.debug(LOG_MESSAGES['json_reward_found'].format(key=reward_code, count=len(profiles)))
-                            script_logger.info(LOG_MESSAGES['reward_profiles_found_old'].format(code=reward_code, count=len(profiles)))
-                        else:
-                            script_logger.debug(f"Профили не найдены или не являются списком для {reward_code}")
-                    else:
-                        script_logger.debug(f"Первый элемент не содержит body для {reward_code}")
                 
                 # Обработка словаря старой структуры (когда reward_value - dict, но без ключей новой структуры)
                 elif isinstance(reward_value, dict):
