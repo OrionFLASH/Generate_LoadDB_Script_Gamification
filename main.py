@@ -543,7 +543,7 @@ FUNCTION_CONFIGS = {
     "rating_list": {  # Ключ: конфигурация для скрипта RatingList (рейтинг участников по бизнес-блокам)
         "name": "RatingList",  # Ключ: название скрипта для отображения
         "description": "Рейтинг участников по бизнес-блокам с пагинацией",  # Ключ: описание назначения скрипта
-        "active_operations": "both",  # Ключ: активные операции ("scripts_only", "json_only", "both")
+        "active_operations": "scripts_only",  # Ключ: активные операции ("scripts_only", "json_only", "both")
         "excel_freeze_row": 1,  # Ключ: номер строки для закрепления в Excel (1 = заголовок)
         "variants": {  # Ключ: варианты конфигурации (SIGMA/ALPHA)
             "sigma": {  # Ключ: вариант SIGMA (продакшн окружение)
@@ -575,16 +575,17 @@ FUNCTION_CONFIGS = {
             "max_participants_per_page": 100,  # Ключ: максимальное количество участников на страницу
             "skip_empty_pages": True  # Ключ: пропускать ли пустые страницы
         },
-        "data_source": "external_file",  # Ключ: источник данных (external_file/variable)
-        "input_format": "CSV",  # Ключ: формат входного файла
-        "csv_column": "BUSINESS_BLOCK",  # Ключ: название столбца для извлечения данных
-        "csv_delimiter": ";",  # Ключ: разделитель в CSV файле
-        "csv_encoding": "utf-8",  # Ключ: кодировка CSV файла
-        "input_file": "BUSINESS_BLOCKS",  # Ключ: имя входного файла (без расширения)
-        "test_data": [  # Ключ: тестовые данные для работы без внешнего файла
-            "KMKKSB",  # Тестовый бизнес-блок 1
-            "KMKKSB",  # Тестовый бизнес-блок 2
-            "KMKKSB"   # Тестовый бизнес-блок 3
+        "data_source": "variable",  # Ключ: источник данных (external_file/variable)
+        "business_blocks": [  # Ключ: массив бизнес-блоков для обработки
+            "KMKKSB",  # Бизнес-блок 1
+            "TEST_BLOCK",  # Бизнес-блок 2
+            "ANOTHER_BLOCK"  # Бизнес-блок 3
+        ],
+        "time_periods": [  # Ключ: массив периодов времени для обработки
+            "ACTIVESEASON",  # Базовый параметр - активный сезон
+            "SEASON_2025_1",  # Сезон 2025-1
+            "SEASON_2024",  # Сезон 2024
+            "ALLTHETIME"  # Все время
         ],
         "json_file": "rating_list"  # Ключ: имя JSON файла для обработки (без расширения)
     }
@@ -1925,10 +1926,17 @@ def generate_rating_list_script(data_list=None):
     import datetime
     import json
     
-    script_logger.info(LOG_MESSAGES['data_loading'])
-    config, data_list, variants_configs = load_script_data("rating_list", data_list)
+    # Получаем конфигурацию
+    config = FUNCTION_CONFIGS["rating_list"]
+    variants_configs = config["variants"]
     
-    script_logger.info(LOG_MESSAGES['config_loaded_count'].format(count=len(data_list)))
+    # Получаем бизнес-блоки и периоды времени из конфигурации
+    business_blocks = config.get('business_blocks', ["KMKKSB"])
+    time_periods = config.get('time_periods', ["ACTIVESEASON"])
+    
+    script_logger.info(f"Загружена конфигурация: {len(business_blocks)} бизнес-блоков, {len(time_periods)} периодов времени")
+    script_logger.debug(f"Бизнес-блоки: {', '.join(business_blocks)}")
+    script_logger.debug(f"Периоды времени: {', '.join(time_periods)}")
     script_logger.debug(f"Варианты: {', '.join([v.upper() for v in variants_configs.keys()])}")
     
     # Получаем настройки из конфигурации
@@ -1962,14 +1970,20 @@ def generate_rating_list_script(data_list=None):
         script_logger.debug(f"Уровень подразделения: {division_level}")
         script_logger.debug(f"Период времени: {time_period}")
         
-        business_blocks_string = ', '.join([f'"{item}"' for item in data_list])
-        script_logger.debug(LOG_MESSAGES['ids_generated'].format(count=len(data_list)))
+        # Создаем строки для JavaScript массивов
+        business_blocks_string = ', '.join([f'"{item}"' for item in business_blocks])
+        time_periods_string = ', '.join([f'"{item}"' for item in time_periods])
+        
+        script_logger.debug(f"Бизнес-блоки для JavaScript: {business_blocks_string}")
+        script_logger.debug(f"Периоды времени для JavaScript: {time_periods_string}")
         
         script = f'''// ==UserScript==
-// Скрипт для DevTools. Выгрузка рейтинга участников по бизнес-блокам с пагинацией
+// Скрипт для DevTools. Выгрузка рейтинга участников по бизнес-блокам и периодам времени с пагинацией
 // Вариант: {variant_name.upper()}
 // API: {base_url}
-// Параметры: divisionLevel={division_level}, timePeriod={time_period}
+// Параметры: divisionLevel={division_level}
+// Бизнес-блоки: {', '.join(business_blocks)}
+// Периоды времени: {', '.join(time_periods)}
 (async () => {{
   function removePhotoData(obj) {{
     if (Array.isArray(obj)) {{ obj.forEach(removePhotoData); }}
@@ -2053,27 +2067,36 @@ def generate_rating_list_script(data_list=None):
   }}
 
   const businessBlocks = [{business_blocks_string}];
+  const timePeriods = [{time_periods_string}];
   const BASE_URL = '{base_url}';
   const DIVISION_LEVEL = '{division_level}';
-  const TIME_PERIOD = '{time_period}';
   const results = {{}};
   let totalParticipants = 0;
   let processed = 0, skipped = 0, errors = 0;
 
-  console.log(`🚀 Начинаем выгрузку рейтинга для ${{businessBlocks.length}} бизнес-блоков`);
+  console.log(`🚀 Начинаем выгрузку рейтинга для ${{businessBlocks.length}} бизнес-блоков и ${{timePeriods.length}} периодов времени`);
   console.log(`📊 Максимум участников на страницу: {max_participants_per_page}`);
   console.log(`⏱️ Задержка между запросами: {delay} сек`);
   console.log(`🔄 Максимум попыток при ошибке: {max_retries}`);
 
-  for (let i = 0; i < businessBlocks.length; i++) {{
-    const businessBlock = businessBlocks[i];
-    console.log(`\\n🔍 [${{i + 1}}/${{businessBlocks.length}}] Бизнес-блок: ${{businessBlock}}`);
+  // Обрабатываем все комбинации бизнес-блоков и периодов времени
+  let combinationIndex = 0;
+  const totalCombinations = businessBlocks.length * timePeriods.length;
+
+  for (let businessBlockIndex = 0; businessBlockIndex < businessBlocks.length; businessBlockIndex++) {{
+    const businessBlock = businessBlocks[businessBlockIndex];
     
-    try {{
-      // Первый запрос для получения информации о количестве участников
-      console.log(`📄 [${{i + 1}}/${{businessBlocks.length}}] Бизнес-блок: ${{businessBlock}} - Запрос страницы 1`);
-      const firstUrl = `${{BASE_URL}}?divisionLevel=${{DIVISION_LEVEL}}&timePeriod=${{TIME_PERIOD}}&pageNum=1&businessBlock=${{businessBlock}}`;
-      console.log(`🔗 URL: ${{firstUrl}}`);
+    for (let timePeriodIndex = 0; timePeriodIndex < timePeriods.length; timePeriodIndex++) {{
+      const timePeriod = timePeriods[timePeriodIndex];
+      combinationIndex++;
+      
+      console.log(`\\n🔍 [${{combinationIndex}}/${{totalCombinations}}] Бизнес-блок: ${{businessBlock}}, Период: ${{timePeriod}}`);
+      
+      try {{
+        // Первый запрос для получения информации о количестве участников
+        console.log(`📄 [${{combinationIndex}}/${{totalCombinations}}] Бизнес-блок: ${{businessBlock}}, Период: ${{timePeriod}} - Запрос страницы 1`);
+        const firstUrl = `${{BASE_URL}}?divisionLevel=${{DIVISION_LEVEL}}&timePeriod=${{timePeriod}}&pageNum=1&businessBlock=${{businessBlock}}`;
+        console.log(`🔗 URL: ${{firstUrl}}`);
       
       const firstResp = await fetchWithRetry(firstUrl, {{
         headers: {{ 
@@ -2087,37 +2110,38 @@ def generate_rating_list_script(data_list=None):
       }});
       
       if (!firstResp.ok) {{
-        console.error(`❌ [${{i + 1}}/${{businessBlocks.length}}] Бизнес-блок: ${{businessBlock}} - HTTP ошибка: ${{firstResp.status}}`);
+        console.error(`❌ [${{combinationIndex}}/${{totalCombinations}}] Бизнес-блок: ${{businessBlock}}, Период: ${{timePeriod}} - HTTP ошибка: ${{firstResp.status}}`);
         errors++;
         continue;
       }}
       
       const firstData = await firstResp.json();
-      console.log(`📊 [${{i + 1}}/${{businessBlocks.length}}] Бизнес-блок: ${{businessBlock}} - Получен ответ, статус: ${{firstResp.status}}`);
+      console.log(`📊 [${{combinationIndex}}/${{totalCombinations}}] Бизнес-блок: ${{businessBlock}}, Период: ${{timePeriod}} - Получен ответ, статус: ${{firstResp.status}}`);
       
       // Извлекаем количество участников
       const participantsCount = extractParticipantsCount(firstData);
-      console.log(`👥 [${{i + 1}}/${{businessBlocks.length}}] Бизнес-блок: ${{businessBlock}} - Участников: ${{participantsCount}}`);
+      console.log(`👥 [${{combinationIndex}}/${{totalCombinations}}] Бизнес-блок: ${{businessBlock}}, Период: ${{timePeriod}} - Участников: ${{participantsCount}}`);
       
       if (participantsCount === 0) {{
-        console.log(`⏭️ [${{i + 1}}/${{businessBlocks.length}}] Бизнес-блок: ${{businessBlock}} - Пропускаем (нет участников)`);
+        console.log(`⏭️ [${{combinationIndex}}/${{totalCombinations}}] Бизнес-блок: ${{businessBlock}}, Период: ${{timePeriod}} - Пропускаем (нет участников)`);
         skipped++;
         continue;
       }}
       
       // Вычисляем количество страниц (делим на max_participants_per_page с округлением вверх)
       const pagesCount = Math.ceil(participantsCount / {max_participants_per_page});
-      console.log(`📊 [${{i + 1}}/${{businessBlocks.length}}] Бизнес-блок: ${{businessBlock}} - Страниц для запроса: ${{pagesCount}} (участников: ${{participantsCount}}, по ${{max_participants_per_page}} на страницу)`);
+      console.log(`📊 [${{combinationIndex}}/${{totalCombinations}}] Бизнес-блок: ${{businessBlock}}, Период: ${{timePeriod}} - Страниц для запроса: ${{pagesCount}} (участников: ${{participantsCount}}, по ${{max_participants_per_page}} на страницу)`);
       
-      // Сохраняем первый запрос
-      results[businessBlock] = [firstData];
+      // Сохраняем первый запрос с ключом, включающим период времени
+      const resultKey = `${{businessBlock}}_${{timePeriod}}`;
+      results[resultKey] = [firstData];
       const firstParticipantsCount = extractParticipants(firstData).length;
       totalParticipants += firstParticipantsCount;
-      console.log(`📊 [${{i + 1}}/${{businessBlocks.length}}] Бизнес-блок: ${{businessBlock}} - Участников на странице 1: ${{firstParticipantsCount}}`);
+      console.log(`📊 [${{combinationIndex}}/${{totalCombinations}}] Бизнес-блок: ${{businessBlock}}, Период: ${{timePeriod}} - Участников на странице 1: ${{firstParticipantsCount}}`);
       
       // Отладочная информация о структуре данных
       if (firstParticipantsCount === 0 && participantsCount > 0) {{
-        console.log(`🔍 [${{i + 1}}/${{businessBlocks.length}}] Бизнес-блок: ${{businessBlock}} - Отладка структуры данных:`);
+        console.log(`🔍 [${{combinationIndex}}/${{totalCombinations}}] Бизнес-блок: ${{businessBlock}}, Период: ${{timePeriod}} - Отладка структуры данных:`);
         console.log(`  - body: ${{!!firstData?.body}}`);
         console.log(`  - participants: ${{!!firstData?.body?.participants}}`);
         console.log(`  - data: ${{!!firstData?.body?.data}}`);
@@ -2129,8 +2153,8 @@ def generate_rating_list_script(data_list=None):
       if (pagesCount > 1) {{
         for (let page = 2; page <= pagesCount; page++) {{
           try {{
-            console.log(`📄 [${{i + 1}}/${{businessBlocks.length}}] Бизнес-блок: ${{businessBlock}} - Запрос страницы ${{page}}/${{pagesCount}}`);
-            const pageUrl = `${{BASE_URL}}?divisionLevel=${{DIVISION_LEVEL}}&timePeriod=${{TIME_PERIOD}}&pageNum=${{page}}&businessBlock=${{businessBlock}}`;
+            console.log(`📄 [${{combinationIndex}}/${{totalCombinations}}] Бизнес-блок: ${{businessBlock}}, Период: ${{timePeriod}} - Запрос страницы ${{page}}/${{pagesCount}}`);
+            const pageUrl = `${{BASE_URL}}?divisionLevel=${{DIVISION_LEVEL}}&timePeriod=${{timePeriod}}&pageNum=${{page}}&businessBlock=${{businessBlock}}`;
             
             const pageResp = await fetchWithRetry(pageUrl, {{
               headers: {{ 
@@ -2144,7 +2168,7 @@ def generate_rating_list_script(data_list=None):
             }});
             
             if (!pageResp.ok) {{
-              console.error(`❌ [${{i + 1}}/${{businessBlocks.length}}] Бизнес-блок: ${{businessBlock}} - Страница ${{page}} - HTTP ошибка: ${{pageResp.status}}`);
+              console.error(`❌ [${{combinationIndex}}/${{totalCombinations}}] Бизнес-блок: ${{businessBlock}}, Период: ${{timePeriod}} - Страница ${{page}} - HTTP ошибка: ${{pageResp.status}}`);
               continue;
             }}
             
@@ -2153,36 +2177,36 @@ def generate_rating_list_script(data_list=None):
             
             // Пропускаем пустые страницы если это включено в настройках
             if ({str(skip_empty_pages).lower()} && pageParticipantsCount === 0) {{
-              console.log(`⏭️ [${{i + 1}}/${{businessBlocks.length}}] Бизнес-блок: ${{businessBlock}} - Страница ${{page}}/${{pagesCount}} - Пропускаем (пустая страница)`);
+              console.log(`⏭️ [${{combinationIndex}}/${{totalCombinations}}] Бизнес-блок: ${{businessBlock}}, Период: ${{timePeriod}} - Страница ${{page}}/${{pagesCount}} - Пропускаем (пустая страница)`);
               continue;
             }}
             
-            results[businessBlock].push(pageData);
+            results[resultKey].push(pageData);
             totalParticipants += pageParticipantsCount;
-            console.log(`✅ [${{i + 1}}/${{businessBlocks.length}}] Бизнес-блок: ${{businessBlock}} - Страница ${{page}}/${{pagesCount}} - Успешно, участников: ${{pageParticipantsCount}}`);
+            console.log(`✅ [${{combinationIndex}}/${{totalCombinations}}] Бизнес-блок: ${{businessBlock}}, Период: ${{timePeriod}} - Страница ${{page}}/${{pagesCount}} - Успешно, участников: ${{pageParticipantsCount}}`);
             
             // Задержка между ответом и следующим запросом страницы
             if (page < pagesCount) {{
-              console.log(`⏱️ [${{i + 1}}/${{businessBlocks.length}}] Бизнес-блок: ${{businessBlock}} - Ожидание ${{delay}} сек перед следующей страницей...`);
+              console.log(`⏱️ [${{combinationIndex}}/${{totalCombinations}}] Бизнес-блок: ${{businessBlock}}, Период: ${{timePeriod}} - Ожидание ${{delay}} сек перед следующей страницей...`);
               await new Promise(resolve => setTimeout(resolve, {delay} * 1000));
             }}
           }} catch (pageError) {{
-            console.error(`❌ [${{i + 1}}/${{businessBlocks.length}}] Бизнес-блок: ${{businessBlock}} - Страница ${{page}} - Ошибка:`, pageError);
+            console.error(`❌ [${{combinationIndex}}/${{totalCombinations}}] Бизнес-блок: ${{businessBlock}}, Период: ${{timePeriod}} - Страница ${{page}} - Ошибка:`, pageError);
           }}
         }}
       }}
       
-      console.log(`✅ [${{i + 1}}/${{businessBlocks.length}}] Бизнес-блок: ${{businessBlock}} - Завершен, всего страниц: ${{results[businessBlock].length}}`);
+      console.log(`✅ [${{combinationIndex}}/${{totalCombinations}}] Бизнес-блок: ${{businessBlock}}, Период: ${{timePeriod}} - Завершен, всего страниц: ${{results[resultKey].length}}`);
       processed++;
       
     }} catch (e) {{
-      console.error(`❌ [${{i + 1}}/${{businessBlocks.length}}] Бизнес-блок: ${{businessBlock}} - Критическая ошибка:`, e);
+      console.error(`❌ [${{combinationIndex}}/${{totalCombinations}}] Бизнес-блок: ${{businessBlock}}, Период: ${{timePeriod}} - Критическая ошибка:`, e);
       errors++;
     }}
     
-    // Задержка между ответом и следующим бизнес-блоком
-    if (i < businessBlocks.length - 1) {{
-      console.log(`⏱️ [${{i + 1}}/${{businessBlocks.length}}] Ожидание ${{delay}} сек перед следующим бизнес-блоком...`);
+    // Задержка между комбинациями
+    if (combinationIndex < totalCombinations) {{
+      console.log(`⏱️ [${{combinationIndex}}/${{totalCombinations}}] Ожидание ${{delay}} сек перед следующей комбинацией...`);
       await new Promise(resolve => setTimeout(resolve, {delay} * 1000));
     }}
   }}
@@ -2233,7 +2257,7 @@ def generate_rating_list_script(data_list=None):
     for variant_name, filepath in generated_scripts:
         script_logger.info(f"✅ {variant_name.upper()}: {filepath}")
     
-    script_logger.info(LOG_MESSAGES['script_generated_success'].format(script_name="RatingList", count=len(data_list)))
+    script_logger.info(LOG_MESSAGES['script_generated_success'].format(script_name="RatingList", count=len(business_blocks) * len(time_periods)))
     script_logger.debug(LOG_MESSAGES['function_completed'].format(func="generate_rating_list_script", params="args=(), kwargs=[]", time="0.0000"))
     
     # Возвращаем информацию о сгенерированных скриптах
