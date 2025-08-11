@@ -549,7 +549,7 @@ FUNCTION_CONFIGS = {
             "sigma": {  # Ключ: вариант SIGMA (продакшн окружение)
                 "name": "RatingList (SIGMA)",  # Ключ: название варианта
                 "domain": "https://salesheroes.sberbank.ru",  # Ключ: домен для SIGMA
-                "params": {  # Ключ: параметры API запросов
+        "params": {  # Ключ: параметры API запросов
                     "api_path": "/bo/rmkib.gamification/api/v1/ratinglist",  # Ключ: путь к API
                     "service": "ratinglist",  # Ключ: название сервиса
                     "division_level": "BANK",  # Ключ: уровень подразделения
@@ -577,9 +577,14 @@ FUNCTION_CONFIGS = {
         },
         "data_source": "variable",  # Ключ: источник данных (external_file/variable)
         "business_blocks": [  # Ключ: массив бизнес-блоков для обработки
-            "KMKKSB",  # Бизнес-блок 1
-            "TEST_BLOCK",  # Бизнес-блок 2
-            "ANOTHER_BLOCK"  # Бизнес-блок 3
+            "KMKKSB",      # Клиентский менеджер крупнейшего, крупного и среднего бизнеса
+            "MNS",         # Менеджер нефинансовых сервисов
+            "SERVICEMEN",  # Сервис-менеджер
+            "KMFACTORING", # Специалист СберФакторинга
+            "KMSB1",       # Менеджер СберПервый
+            "IMUB",        # Инвестиционный менеджер Управления Благосостояния
+            "RNUB",        # Руководитель направления управления благосостояния
+            "RSB1"         # Руководитель СберПервый
         ],
         "time_periods": [  # Ключ: массив периодов времени для обработки
             "ACTIVESEASON",  # Базовый параметр - активный сезон
@@ -2003,6 +2008,20 @@ def generate_rating_list_script(data_list=None):
 
   function extractParticipantsCount(data) {{
     try {{
+      // Пытаемся извлечь количество участников из поля contestants (например: "1 557 участников по стране")
+      if (data?.body?.rating?.contestants) {{
+        const contestantsText = data.body.rating.contestants;
+        const match = contestantsText.match(/(\d+(?:\\s*\d+)*)/);
+        if (match) {{
+          // Убираем пробелы и преобразуем в число
+          const numberStr = match[1].replace(/\s/g, '');
+          const count = parseInt(numberStr, 10);
+          if (!isNaN(count)) {{
+            return count;
+          }}
+        }}
+      }}
+      
       // Пытаемся извлечь количество участников из различных возможных мест в ответе
       if (data?.body?.totalCount !== undefined) {{
         return data.body.totalCount;
@@ -2029,6 +2048,11 @@ def generate_rating_list_script(data_list=None):
 
   function extractParticipants(data) {{
     try {{
+      // Пытаемся извлечь участников из поля leaders в структуре rating
+      if (data?.body?.rating?.leaders && Array.isArray(data.body.rating.leaders)) {{
+        return data.body.rating.leaders;
+      }}
+      
       // Пытаемся извлечь участников из различных возможных мест в ответе
       if (data?.body?.participants && Array.isArray(data.body.participants)) {{
         return data.body.participants;
@@ -2120,10 +2144,11 @@ def generate_rating_list_script(data_list=None):
       
       // Извлекаем количество участников
       const participantsCount = extractParticipantsCount(firstData);
-      console.log(`👥 [${{combinationIndex}}/${{totalCombinations}}] Бизнес-блок: ${{businessBlock}}, Период: ${{timePeriod}} - Участников: ${{participantsCount}}`);
+      const contestantsText = firstData?.body?.rating?.contestants || 'не указано';
+      console.log(`👥 [${{combinationIndex}}/${{totalCombinations}}] Бизнес-блок: ${{businessBlock}}, Период: ${{timePeriod}} - Участников: ${{participantsCount}} (из поля: "${{contestantsText}}")`);
       
       if (participantsCount === 0) {{
-        console.log(`⏭️ [${{combinationIndex}}/${{totalCombinations}}] Бизнес-блок: ${{businessBlock}}, Период: ${{timePeriod}} - Пропускаем (нет участников)`);
+        console.log(`⏭️ [${{combinationIndex}}/${{totalCombinations}}] Бизнес-блок: ${{businessBlock}}, Период: ${{timePeriod}} - Пропускаем (нет участников или неверный формат данных)`);
         skipped++;
         continue;
       }}
@@ -2143,6 +2168,10 @@ def generate_rating_list_script(data_list=None):
       if (firstParticipantsCount === 0 && participantsCount > 0) {{
         console.log(`🔍 [${{combinationIndex}}/${{totalCombinations}}] Бизнес-блок: ${{businessBlock}}, Период: ${{timePeriod}} - Отладка структуры данных:`);
         console.log(`  - body: ${{!!firstData?.body}}`);
+        console.log(`  - rating: ${{!!firstData?.body?.rating}}`);
+        console.log(`  - contestants: ${{firstData?.body?.rating?.contestants || 'undefined'}}`);
+        console.log(`  - leaders: ${{!!firstData?.body?.rating?.leaders}}`);
+        console.log(`  - leaders.length: ${{firstData?.body?.rating?.leaders?.length || 'undefined'}}`);
         console.log(`  - participants: ${{!!firstData?.body?.participants}}`);
         console.log(`  - data: ${{!!firstData?.body?.data}}`);
         console.log(`  - participants.length: ${{firstData?.body?.participants?.length || 'undefined'}}`);
