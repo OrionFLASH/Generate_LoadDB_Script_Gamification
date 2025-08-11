@@ -31,7 +31,7 @@ from pandas.core.missing import F
 # =============================================================================
 
 # Базовая папка проекта
-BASE_DIR = r"/Users/orionflash/Desktop/MyProject/Gen_Load_Game_Script/Project_Game_Load_Script-Cursor/Generate_LoadDB_Script_Gamification/WORK"
+BASE_DIR = r"/Users/orionflash/Desktop/MyProject/Gen_Load_Game_Script/WORK"
 
 # Настройки логирования
 LOG_LEVEL = "INFO"  # Уровень детализации логов: "INFO" - основная информация, "DEBUG" - подробная отладочная информация
