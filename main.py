@@ -1117,16 +1117,21 @@ def calculate_crystal_rankings(df):
         i = 0
         while i < len(sorted_group):
             current_crystals = sorted_group.iloc[i]['crystalsEarned']
-            # Находим все записи с таким же количеством кристаллов
-            same_crystals_mask = sorted_group['crystalsEarned'] == current_crystals
-            same_crystals_count = same_crystals_mask.sum()
+            same_crystals_count = 0
             
-            # Присваиваем одинаковое место всем с одинаковым количеством кристаллов
-            result_df.loc[sorted_group[same_crystals_mask].index, 'BANK_placeByCrystals'] = current_rank
+            # Считаем количество участников с одинаковыми кристаллами
+            j = i
+            while j < len(sorted_group) and sorted_group.iloc[j]['crystalsEarned'] == current_crystals:
+                same_crystals_count += 1
+                j += 1
+            
+            # Присваиваем место всем участникам с одинаковыми кристаллами
+            for k in range(i, j):
+                result_df.loc[sorted_group.index[k], 'BANK_placeByCrystals'] = current_rank
             
             # Следующее место будет current_rank + same_crystals_count
             current_rank += same_crystals_count
-            i += same_crystals_count
+            i = j
         
         # Расчет места на уровне TB (среди всех в одном terDivisionName в рамках одного business_block и time_period)
         for ter_division in group['terDivisionName'].unique():
@@ -1139,12 +1144,20 @@ def calculate_crystal_rankings(df):
             i = 0
             while i < len(sorted_tb_group):
                 current_crystals = sorted_tb_group.iloc[i]['crystalsEarned']
-                same_crystals_mask = sorted_tb_group['crystalsEarned'] == current_crystals
-                same_crystals_count = same_crystals_mask.sum()
+                same_crystals_count = 0
                 
-                result_df.loc[sorted_tb_group[same_crystals_mask].index, 'TB_placeByCrystals'] = current_rank
+                # Считаем количество участников с одинаковыми кристаллами
+                j = i
+                while j < len(sorted_tb_group) and sorted_tb_group.iloc[j]['crystalsEarned'] == current_crystals:
+                    same_crystals_count += 1
+                    j += 1
+                
+                # Присваиваем место всем участникам с одинаковыми кристаллами
+                for k in range(i, j):
+                    result_df.loc[sorted_tb_group.index[k], 'TB_placeByCrystals'] = current_rank
+                
                 current_rank += same_crystals_count
-                i += same_crystals_count
+                i = j
         
         # Расчет места на уровне GOSB (среди всех в одном terDivisionName и gosbCode в рамках одного business_block и time_period)
         for ter_division in group['terDivisionName'].unique():
@@ -1158,12 +1171,20 @@ def calculate_crystal_rankings(df):
                 i = 0
                 while i < len(sorted_gosb_group):
                     current_crystals = sorted_gosb_group.iloc[i]['crystalsEarned']
-                    same_crystals_mask = sorted_gosb_group['crystalsEarned'] == current_crystals
-                    same_crystals_count = same_crystals_mask.sum()
+                    same_crystals_count = 0
                     
-                    result_df.loc[sorted_gosb_group[same_crystals_mask].index, 'GOSB_placeByCrystals'] = current_rank
+                    # Считаем количество участников с одинаковыми кристаллами
+                    j = i
+                    while j < len(sorted_gosb_group) and sorted_gosb_group.iloc[j]['crystalsEarned'] == current_crystals:
+                        same_crystals_count += 1
+                        j += 1
+                    
+                    # Присваиваем место всем участникам с одинаковыми кристаллами
+                    for k in range(i, j):
+                        result_df.loc[sorted_gosb_group.index[k], 'GOSB_placeByCrystals'] = current_rank
+                    
                     current_rank += same_crystals_count
-                    i += same_crystals_count
+                    i = j
     
     logger.info(LOG_MESSAGES['crystal_rankings_completed'])
     return result_df
