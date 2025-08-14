@@ -263,7 +263,31 @@ LOG_MESSAGES = {
     "photo_data_removing": "Удаляем поля photoData из результатов",  # Ключ: удаление photoData
     "photo_data_removed": "Поля photoData удалены из результатов",  # Ключ: photoData удалены
     "delay_after_response": "Ожидание {delay} мс после получения ответа",  # Ключ: ожидание после ответа
-    "next_request_after_delay": "Выполнение следующего запроса после задержки {delay} мс"  # Ключ: следующий запрос после задержки
+    "next_request_after_delay": "Выполнение следующего запроса после задержки {delay} мс",  # Ключ: следующий запрос после задержки
+    
+    # Сообщения для расчета мест по кристаллам
+    "crystal_rankings_start": "Начинаем расчет мест по кристаллам...",  # Ключ: начало расчета мест по кристаллам
+    "crystal_rankings_completed": "Расчет мест по кристаллам завершен",  # Ключ: завершение расчета мест по кристаллам
+    "crystal_rankings_bank_level": "Расчет мест на уровне BANK для {business_block}_{time_period}",  # Ключ: расчет мест на уровне BANK
+    "crystal_rankings_tb_level": "Расчет мест на уровне TB для {ter_division} в {business_block}_{time_period}",  # Ключ: расчет мест на уровне TB
+    "crystal_rankings_gosb_level": "Расчет мест на уровне GOSB для {ter_division}_{gosb_code} в {business_block}_{time_period}",  # Ключ: расчет мест на уровне GOSB
+    "crystal_rankings_same_crystals": "Найдено {count} участников с {crystals} кристаллами - присваиваем место {rank}",  # Ключ: участники с одинаковыми кристаллами
+    
+    # Сообщения для обработки рейтинга
+    "rating_processing_start": "Начинаем обработку рейтинга участников...",  # Ключ: начало обработки рейтинга
+    "rating_processing_completed": "Обработка рейтинга участников завершена",  # Ключ: завершение обработки рейтинга
+    "rating_leader_processing": "Обработка лидера рейтинга: {employee_number} {full_name}",  # Ключ: обработка лидера рейтинга
+    "rating_group_processing": "Обработка группы {business_block}_{time_period}: {count} участников",  # Ключ: обработка группы рейтинга
+    "rating_division_processing": "Обработка подразделения {ter_division}: {count} участников",  # Ключ: обработка подразделения
+    "rating_gosb_processing": "Обработка GOSB {gosb_code} в {ter_division}: {count} участников",  # Ключ: обработка GOSB
+    
+    # Сообщения для преобразования данных
+    "data_transformation_start": "Начинаем преобразование данных...",  # Ключ: начало преобразования данных
+    "data_transformation_completed": "Преобразование данных завершено",  # Ключ: завершение преобразования данных
+    "data_validation_start": "Начинаем валидацию данных...",  # Ключ: начало валидации данных
+    "data_validation_completed": "Валидация данных завершена",  # Ключ: завершение валидации данных
+    "data_cleaning_start": "Начинаем очистку данных...",  # Ключ: начало очистки данных
+    "data_cleaning_completed": "Очистка данных завершена",  # Ключ: завершение очистки данных
 }
 
 # =============================================================================
@@ -596,10 +620,10 @@ FUNCTION_CONFIGS = {
             "excel_freeze_cell": "B2",  # Ключ: ячейка для закрепления в Excel
             "column_settings": {  # Ключ: настройки обработки колонок для Excel
                 "columns_to_keep": [],
-                "columns_to_remove": ["photoData"],
+                "columns_to_remove": ["photoData", "isMarked", "colorCode"],
                 "numeric_conversions": {
                     "integer_fields": {
-                        "fields": ["gosbCode", "placeInRating"],
+                        "fields": ["gosbCode", "placeInRating", "crystalsEarned"],
                         "type": "integer",
                         "replace_original": True
                     }
@@ -1055,6 +1079,146 @@ def flatten_leader_data(leader_data):
                 flattened[f'{group_code}_placeInRating'] = ''
             
             flattened[f'{group_code}_ratingCategoryName'] = rating.get('ratingCategoryName', '')
+    
+    return flattened
+
+def calculate_crystal_rankings(df):
+    """
+    Расчет мест по количеству кристаллов на разных уровнях группировки
+    
+    Args:
+        df (pd.DataFrame): DataFrame с данными рейтинга
+        
+    Returns:
+        pd.DataFrame: DataFrame с добавленными колонками мест
+    """
+    # Создаем копию DataFrame
+    result_df = df.copy()
+    
+    # Добавляем колонки для мест
+    result_df['BANK_placeByCrystals'] = 0
+    result_df['TB_placeByCrystals'] = 0
+    result_df['GOSB_placeByCrystals'] = 0
+    
+    # Получаем логгер для этой функции
+    logger = logging.getLogger(__name__)
+    
+    logger.info(LOG_MESSAGES['crystal_rankings_start'])
+    
+    # Группируем по business_block и time_period для расчета мест
+    for (business_block, time_period), group in result_df.groupby(['rating_businessBlock', 'rating_timePeriod']):
+        logger.debug(LOG_MESSAGES['crystal_rankings_bank_level'].format(
+            business_block=business_block, time_period=time_period))
+        # Сортируем по количеству кристаллов (по убыванию - больше кристаллов = лучшее место)
+        sorted_group = group.sort_values('crystalsEarned', ascending=False)
+        
+        # Расчет места на уровне BANK (среди всех в рамках одного business_block и time_period)
+        current_rank = 1
+        i = 0
+        while i < len(sorted_group):
+            current_crystals = sorted_group.iloc[i]['crystalsEarned']
+            # Находим все записи с таким же количеством кристаллов
+            same_crystals_mask = sorted_group['crystalsEarned'] == current_crystals
+            same_crystals_count = same_crystals_mask.sum()
+            
+            # Присваиваем одинаковое место всем с одинаковым количеством кристаллов
+            result_df.loc[sorted_group[same_crystals_mask].index, 'BANK_placeByCrystals'] = current_rank
+            
+            # Следующее место будет current_rank + same_crystals_count
+            current_rank += same_crystals_count
+            i += same_crystals_count
+        
+        # Расчет места на уровне TB (среди всех в одном terDivisionName в рамках одного business_block и time_period)
+        for ter_division in group['terDivisionName'].unique():
+            logger.debug(LOG_MESSAGES['crystal_rankings_tb_level'].format(
+                ter_division=ter_division, business_block=business_block, time_period=time_period))
+            tb_group = group[group['terDivisionName'] == ter_division]
+            sorted_tb_group = tb_group.sort_values('crystalsEarned', ascending=False)
+            
+            current_rank = 1
+            i = 0
+            while i < len(sorted_tb_group):
+                current_crystals = sorted_tb_group.iloc[i]['crystalsEarned']
+                same_crystals_mask = sorted_tb_group['crystalsEarned'] == current_crystals
+                same_crystals_count = same_crystals_mask.sum()
+                
+                result_df.loc[sorted_tb_group[same_crystals_mask].index, 'TB_placeByCrystals'] = current_rank
+                current_rank += same_crystals_count
+                i += same_crystals_count
+        
+        # Расчет места на уровне GOSB (среди всех в одном terDivisionName и gosbCode в рамках одного business_block и time_period)
+        for ter_division in group['terDivisionName'].unique():
+            for gosb_code in group[group['terDivisionName'] == ter_division]['gosbCode'].unique():
+                logger.debug(LOG_MESSAGES['crystal_rankings_gosb_level'].format(
+                    ter_division=ter_division, gosb_code=gosb_code, business_block=business_block, time_period=time_period))
+                gosb_group = group[(group['terDivisionName'] == ter_division) & (group['gosbCode'] == gosb_code)]
+                sorted_gosb_group = gosb_group.sort_values('crystalsEarned', ascending=False)
+                
+                current_rank = 1
+                i = 0
+                while i < len(sorted_gosb_group):
+                    current_crystals = sorted_gosb_group.iloc[i]['crystalsEarned']
+                    same_crystals_mask = sorted_gosb_group['crystalsEarned'] == current_crystals
+                    same_crystals_count = same_crystals_mask.sum()
+                    
+                    result_df.loc[sorted_gosb_group[same_crystals_mask].index, 'GOSB_placeByCrystals'] = current_rank
+                    current_rank += same_crystals_count
+                    i += same_crystals_count
+    
+    logger.info(LOG_MESSAGES['crystal_rankings_completed'])
+    return result_df
+
+def flatten_rating_leader_data(leader_data, business_block="", time_period=""):
+    """
+    Преобразование данных лидера рейтинга в плоскую структуру
+    
+    Args:
+        leader_data (dict): Данные лидера из структуры рейтинга
+        business_block (str): Бизнес-блок (извлекается из ключа)
+        time_period (str): Период времени (извлекается из ключа)
+        
+    Returns:
+        dict: Плоская структура данных лидера рейтинга
+    """
+    # Получаем логгер для этой функции
+    logger = logging.getLogger(__name__)
+    
+    flattened = {}
+    
+    # Основные поля лидера рейтинга
+    flattened['employeeNumber'] = leader_data.get('employeeNumber', '')
+    flattened['lastName'] = leader_data.get('lastName', '')
+    flattened['firstName'] = leader_data.get('firstName', '')
+    flattened['terDivisionName'] = leader_data.get('terDivisionName', '')
+    flattened['gosbCode'] = leader_data.get('gosbCode', '')
+    flattened['placeInRating'] = leader_data.get('placeInRating', '')
+    flattened['crystalsEarned'] = leader_data.get('crystalsEarned', '')
+    flattened['employeeStatus'] = leader_data.get('employeeStatus', '')
+    flattened['businessBlock'] = leader_data.get('businessBlock', '')
+    
+    # Логируем обработку лидера рейтинга
+    full_name = f"{flattened['lastName']} {flattened['firstName']}".strip()
+    logger.debug(LOG_MESSAGES['rating_leader_processing'].format(
+        employee_number=flattened['employeeNumber'], full_name=full_name))
+    
+    # Создаем полное имя
+    flattened['fullName'] = f"{leader_data.get('lastName', '')} {leader_data.get('firstName', '')}".strip()
+    
+    # Метаданные из ключа (бизнес-блок и период времени)
+    flattened['rating_businessBlock'] = business_block
+    flattened['rating_timePeriod'] = time_period
+    
+    # Обработка placeInRating: если "-", то оставляем пустым
+    if flattened['placeInRating'] == "-":
+        flattened['placeInRating'] = ""
+    
+    # Обработка gosbCode: если пустой или "-", то оставляем пустым
+    if flattened['gosbCode'] == "-" or flattened['gosbCode'] == "":
+        flattened['gosbCode'] = ""
+    
+    # Обработка crystalsEarned: если пустой или "-", то оставляем пустым
+    if flattened['crystalsEarned'] == "-" or flattened['crystalsEarned'] == "":
+        flattened['crystalsEarned'] = ""
     
     return flattened
 
@@ -3408,10 +3572,8 @@ def convert_rating_list_json_to_excel(input_json_path, output_excel_path, config
 
             if isinstance(leaders, list):
                 for leader in leaders:
-                    row = flatten_leader_data(leader)
-                    # Бизнес-блок и период времени: берем из лидера, если есть; иначе из ключа (fallback)
-                    row['rating_businessBlock'] = leader.get('businessBlock') or fallback_business_block
-                    row['rating_timePeriod'] = leader.get('timePeriod') or fallback_time_period
+                    row = flatten_rating_leader_data(leader, fallback_business_block, fallback_time_period)
+                    # Добавляем информацию о количестве участников
                     row['rating_contestantsText'] = contestants_text
                     if contestants_count is not None:
                         row['rating_contestantsCount'] = contestants_count
@@ -3422,6 +3584,8 @@ def convert_rating_list_json_to_excel(input_json_path, output_excel_path, config
             for key, pages in json_data.items():
                 business_block = key.split('_')[0] if '_' in key else key
                 time_period = key[len(business_block) + 1:] if '_' in key else ''
+                logger.debug(LOG_MESSAGES['rating_group_processing'].format(
+                    business_block=business_block, time_period=time_period, count=len(pages) if isinstance(pages, list) else 1))
                 if isinstance(pages, list):
                     for item in pages:
                         extract_from_one_response(item, business_block, time_period)
@@ -3446,6 +3610,11 @@ def convert_rating_list_json_to_excel(input_json_path, output_excel_path, config
             return False
 
         logger.info(LOG_MESSAGES['json_records_processed'].format(count=len(df)))
+        
+        # Расчет мест по кристаллам на разных уровнях
+        logger.info(LOG_MESSAGES['crystal_rankings_start'])
+        df = calculate_crystal_rankings(df)
+        logger.info(LOG_MESSAGES['crystal_rankings_completed'])
 
         if config_key == "rating_list" and "rating_list" in FUNCTION_CONFIGS:
             config = FUNCTION_CONFIGS["rating_list"]
@@ -3603,6 +3772,10 @@ def convert_specific_json_file(file_name_without_extension, config_key=None):
         if not os.path.exists(input_json_path):
             logger.error(LOG_MESSAGES['json_file_not_found'].format(file_path=input_json_path))
             return False
+        
+        # Логируем начало конвертации
+        logger.debug(LOG_MESSAGES['data_validation_start'])
+        logger.debug(LOG_MESSAGES['data_cleaning_start'])
             
         # Конвертируем файл
         if convert_json_to_excel(input_json_path, output_excel_path, config_key):
@@ -3619,6 +3792,10 @@ def convert_specific_json_file(file_name_without_extension, config_key=None):
                     file_path=output_excel_path,
                     size="неизвестно"
                 ))
+            
+            # Логируем завершение конвертации
+            logger.debug(LOG_MESSAGES['data_validation_completed'])
+            logger.debug(LOG_MESSAGES['data_cleaning_completed'])
             return True
         else:
             return False
@@ -3784,12 +3961,16 @@ def main():
                                 reward_profiles_config = config["reward_processing"]
                                 json_file = reward_profiles_config["json_file"]
                                 main_logger.info(LOG_MESSAGES['json_file_processing_info'].format(json_file=json_file))
+                                main_logger.debug(LOG_MESSAGES['data_transformation_start'])
                                 convert_specific_json_file(json_file, "reward_processing")
+                                main_logger.debug(LOG_MESSAGES['data_transformation_completed'])
                             elif "json_file" in config:
                                 # Fallback на основной json_file
                                 json_file = config["json_file"]
                                 main_logger.info(LOG_MESSAGES['json_file_processing_info'].format(json_file=json_file))
+                                main_logger.debug(LOG_MESSAGES['data_transformation_start'])
                                 convert_specific_json_file(json_file, script_name)
+                                main_logger.debug(LOG_MESSAGES['data_transformation_completed'])
                             else:
                                 main_logger.warning(f"Для скрипта {script_name} не указан json_file ни в reward_processing, ни в основной конфигурации")
                         elif script_name == "leaders_for_admin":
@@ -3799,12 +3980,16 @@ def main():
                                 leaders_processing_config = config["leaders_processing"]
                                 json_file = leaders_processing_config["json_file"]
                                 main_logger.info(LOG_MESSAGES['json_file_processing_info'].format(json_file=json_file))
+                                main_logger.debug(LOG_MESSAGES['data_transformation_start'])
                                 convert_specific_json_file(json_file, script_name)
+                                main_logger.debug(LOG_MESSAGES['data_transformation_completed'])
                             elif "json_file" in config:
                                 # Fallback на основной json_file
                                 json_file = config["json_file"]
                                 main_logger.info(LOG_MESSAGES['json_file_processing_info'].format(json_file=json_file))
+                                main_logger.debug(LOG_MESSAGES['data_transformation_start'])
                                 convert_specific_json_file(json_file, script_name)
+                                main_logger.debug(LOG_MESSAGES['data_transformation_completed'])
                             else:
                                 main_logger.warning(f"Для скрипта {script_name} не указан json_file ни в leaders_processing, ни в основной конфигурации")
                         elif script_name == "rating_list":
@@ -3814,12 +3999,16 @@ def main():
                                 rating_processing_config = config["rating_processing"]
                                 json_file = rating_processing_config["json_file"]
                                 main_logger.info(LOG_MESSAGES['json_file_processing_info'].format(json_file=json_file))
+                                main_logger.debug(LOG_MESSAGES['data_transformation_start'])
                                 convert_specific_json_file(json_file, script_name)
+                                main_logger.debug(LOG_MESSAGES['data_transformation_completed'])
                             elif "json_file" in config:
                                 # Fallback на основной json_file
                                 json_file = config["json_file"]
                                 main_logger.info(LOG_MESSAGES['json_file_processing_info'].format(json_file=json_file))
+                                main_logger.debug(LOG_MESSAGES['data_transformation_start'])
                                 convert_specific_json_file(json_file, script_name)
+                                main_logger.debug(LOG_MESSAGES['data_transformation_completed'])
                             else:
                                 main_logger.warning(f"Для скрипта {script_name} не указан json_file ни в rating_processing, ни в основной конфигурации")
                         elif "json_file" in config:
@@ -3827,7 +4016,9 @@ def main():
                             json_file = config["json_file"]
                             main_logger.info(LOG_MESSAGES['json_file_processing_info'].format(json_file=json_file))
                             # Если указан конкретный файл — конвертируем его
+                            main_logger.debug(LOG_MESSAGES['data_transformation_start'])
                             convert_specific_json_file(json_file, script_name)
+                            main_logger.debug(LOG_MESSAGES['data_transformation_completed'])
                         else:
                             main_logger.warning(f"Для скрипта {script_name} не указан json_file в конфигурации")
                     else:
