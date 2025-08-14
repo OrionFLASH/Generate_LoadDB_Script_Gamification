@@ -16,6 +16,7 @@ import re
 import json
 import pandas as pd
 from functools import wraps
+import glob
 
 # Импорт библиотеки для работы с буфером обмена (удалено - не используется)
 # import pyperclip
@@ -392,7 +393,7 @@ FUNCTION_CONFIGS = {
             "max_profiles_per_request": 100,  # Ключ: максимальное количество профилей на запрос
             "skip_empty_profiles": True  # Ключ: пропускать ли пустые профили
         },
-        "reward_profiles": {  # Ключ: конфигурация для обработки профилей наград (JSON → Excel)
+        "reward_processing": {  # Ключ: конфигурация для обработки профилей наград (JSON → Excel)
             "name": "Reward Profiles",  # Ключ: название скрипта для отображения
             "description": "Обработка профилей наград из JSON в Excel",  # Ключ: описание назначения скрипта
             "active_operations": "json_only",  # Ключ: активные операции ("scripts_only", "json_only", "both")
@@ -606,7 +607,7 @@ FUNCTION_CONFIGS = {
             "SEASON_m_2024",
             "SEASON_m_2025_1"
         ],
-        "json_file": "rating_list_SIGMA_20250814-163613"  # Ключ: имя JSON файла для обработки (без расширения)
+        "json_file": "rating_list_SIGMA_20250814-165701"  # Ключ: имя JSON файла для обработки (без расширения)
     }
 }
 
@@ -2629,8 +2630,8 @@ def apply_cell_formatting(workbook, df, config_key=None):
         column_settings = {}
         if config_key and config_key in FUNCTION_CONFIGS:
             config = FUNCTION_CONFIGS[config_key]
-            if config_key == "reward" and "reward_profiles" in config:
-                column_settings = config["reward_profiles"].get("column_settings", {})
+            if config_key == "reward" and "reward_processing" in config:
+                column_settings = config["reward_processing"].get("column_settings", {})
             elif config_key == "leaders_for_admin" and "leaders_processing" in config:
                 column_settings = config["leaders_processing"].get("column_settings", {})
         
@@ -2779,8 +2780,8 @@ def save_excel_file(df, output_excel_path, config_key=None):
             if config_key and config_key in FUNCTION_CONFIGS:
                 config = FUNCTION_CONFIGS[config_key]
                 # Проверяем, есть ли вложенные конфигурации
-                if config_key == "reward" and "reward_profiles" in config:
-                    reward_profiles_config = config["reward_profiles"]
+                if config_key == "reward" and "reward_processing" in config:
+                    reward_profiles_config = config["reward_processing"]
                     freeze_cell = reward_profiles_config.get('excel_freeze_cell', "B2")
                 elif config_key == "leaders_for_admin" and "leaders_processing" in config:
                     leaders_processing_config = config["leaders_processing"]
@@ -3097,8 +3098,8 @@ def convert_reward_profiles_json_to_excel(input_json_path, output_excel_path, co
         # Применение настроек колонок
         if config_key == "reward" and "reward" in FUNCTION_CONFIGS:
             config = FUNCTION_CONFIGS["reward"]
-            if "reward_profiles" in config and "column_settings" in config["reward_profiles"]:
-                column_settings = config["reward_profiles"]["column_settings"]
+            if "reward_processing" in config and "column_settings" in config["reward_processing"]:
+                column_settings = config["reward_processing"]["column_settings"]
                 logger.info(LOG_MESSAGES['column_settings_applying'])
                 df = apply_column_settings(df, column_settings)
                 logger.info(LOG_MESSAGES['column_settings_applied'].format(count=len(df.columns)))
@@ -3370,21 +3371,48 @@ def convert_rating_list_json_to_excel(input_json_path, output_excel_path, config
         logger.info(LOG_MESSAGES['json_data_processing'])
         rows = []
 
-        if isinstance(json_data, dict):
+        def extract_from_one_response(response_obj, fallback_business_block="", fallback_time_period=""):
+            rating = (response_obj or {}).get('body', {}).get('rating', {})
+            leaders = rating.get('leaders')
+            contestants_text = rating.get('contestants', '')
+            # Пытаемся извлечь численное значение из текста (например: "1 557 участников по стране")
+            contestants_count = None
+            try:
+                match = re.search(r"(\d+(?:\s*\d+)*)", str(contestants_text))
+                if match:
+                    contestants_count = int(re.sub(r"\s+", "", match.group(1)))
+            except Exception:
+                contestants_count = None
+
+            if isinstance(leaders, list):
+                for leader in leaders:
+                    row = flatten_leader_data(leader)
+                    # Бизнес-блок и период времени: берем из лидера, если есть; иначе из ключа (fallback)
+                    row['rating_businessBlock'] = leader.get('businessBlock') or fallback_business_block
+                    row['rating_timePeriod'] = leader.get('timePeriod') or fallback_time_period
+                    row['rating_contestantsText'] = contestants_text
+                    if contestants_count is not None:
+                        row['rating_contestantsCount'] = contestants_count
+                    rows.append(row)
+
+        # Вариант 1: агрегированный формат { "BLOCK_PERIOD": [ {page1}, {page2}, ... ] }
+        if isinstance(json_data, dict) and not ('body' in json_data and 'rating' in json_data.get('body', {})):
             for key, pages in json_data.items():
                 business_block = key.split('_')[0] if '_' in key else key
-                time_period = key[len(business_block)+1:] if '_' in key else ''
+                time_period = key[len(business_block) + 1:] if '_' in key else ''
                 if isinstance(pages, list):
                     for item in pages:
-                        leaders = (item or {}).get('body', {}).get('rating', {}).get('leaders')
-                        contestants = (item or {}).get('body', {}).get('rating', {}).get('contestants', '')
-                        if isinstance(leaders, list):
-                            for leader in leaders:
-                                row = flatten_leader_data(leader)
-                                row['rating_businessBlock'] = business_block
-                                row['rating_timePeriod'] = time_period
-                                row['rating_contestantsText'] = contestants
-                                rows.append(row)
+                        extract_from_one_response(item, business_block, time_period)
+                else:
+                    # Если по ключу лежит одиночный объект ответа
+                    extract_from_one_response(pages, business_block, time_period)
+        # Вариант 2: одиночный ответ { "success": true, "body": { "rating": { "leaders": [...] } } }
+        elif isinstance(json_data, dict) and ('body' in json_data and 'rating' in json_data.get('body', {})):
+            extract_from_one_response(json_data)
+        # Вариант 3: список ответов [ {singleResponse}, {singleResponse}, ... ]
+        elif isinstance(json_data, list):
+            for item in json_data:
+                extract_from_one_response(item)
 
         if not rows:
             logger.warning(LOG_MESSAGES['no_data_warning'])
@@ -3428,7 +3456,7 @@ def convert_json_to_excel(input_json_path, output_excel_path, config_key=None):
         return convert_leaders_json_to_excel(input_json_path, output_excel_path, config_key)
     elif config_key == "reward":
         return convert_reward_json_to_excel(input_json_path, output_excel_path, config_key)
-    elif config_key == "reward_profiles" or (config_key == "reward" and "reward_profiles" in FUNCTION_CONFIGS["reward"]):
+    elif config_key == "reward_processing" or (config_key == "reward" and "reward_processing" in FUNCTION_CONFIGS["reward"]):
         return convert_reward_profiles_json_to_excel(input_json_path, output_excel_path, "reward")
     elif config_key == "rating_list":
         return convert_rating_list_json_to_excel(input_json_path, output_excel_path, config_key)
@@ -3451,7 +3479,7 @@ def convert_json_to_excel(input_json_path, output_excel_path, config_key=None):
                         return convert_leaders_json_to_excel(input_json_path, output_excel_path, config_key_name)
                     elif config_key_name == "reward":
                         return convert_reward_json_to_excel(input_json_path, output_excel_path, config_key_name)
-                    elif config_key_name == "reward_profiles" or (config_key_name == "reward" and "reward_profiles" in FUNCTION_CONFIGS["reward"]):
+                    elif config_key_name == "reward_processing" or (config_key_name == "reward" and "reward_processing" in FUNCTION_CONFIGS["reward"]):
                         return convert_reward_profiles_json_to_excel(input_json_path, output_excel_path, "reward")
                     elif config_key_name == "rating_list":
                         return convert_rating_list_json_to_excel(input_json_path, output_excel_path, config_key_name)
@@ -3497,18 +3525,37 @@ def convert_specific_json_file(file_name_without_extension, config_key=None):
         input_json_path = os.path.join(json_dir, f"{file_name_without_extension}.json")
         
         # Генерируем уникальное имя Excel файла
+        resolved_config_key = config_key
+        config = None
         if config_key and config_key in FUNCTION_CONFIGS:
             config = FUNCTION_CONFIGS[config_key]
+        elif config_key == "reward_processing":
+            # reward_profiles хранится внутри FUNCTION_CONFIGS['reward']
+            resolved_config_key = "reward"
+            config = FUNCTION_CONFIGS.get("reward", {})
             
+            # Кастомное правило именования для reward/reward_processing: profiles_<VARIANT>_<STAMP> → REWARD_<STAMP>
+            excel_file_base_override = None
+            if config_key in ("reward", "reward_processing"):
+                match = re.match(r"^profiles_[A-Za-z]+_(\d{8}-\d{6})$", file_name_without_extension)
+                if match:
+                    excel_file_base_override = f"REWARD_{match.group(1)}"
+                elif file_name_without_extension.startswith("profiles_"):
+                    parts = file_name_without_extension.split("_", 2)
+                    if len(parts) == 3:
+                        excel_file_base_override = f"REWARD_{parts[2]}"
+                    else:
+                        excel_file_base_override = "REWARD"
+
             # Проверяем, есть ли вложенные конфигурации
-            if config_key == "reward" and "reward_profiles" in config:
-                reward_profiles_config = config["reward_profiles"]
-                excel_file_base = reward_profiles_config.get("excel_file", file_name_without_extension)
+            if resolved_config_key == "reward" and "reward_processing" in config:
+                reward_profiles_config = config["reward_processing"]
+                excel_file_base = excel_file_base_override or reward_profiles_config.get("excel_file", file_name_without_extension)
             elif config_key == "leaders_for_admin" and "leaders_processing" in config:
                 leaders_processing_config = config["leaders_processing"]
                 excel_file_base = leaders_processing_config.get("excel_file", file_name_without_extension)
             else:
-                excel_file_base = config.get("excel_file", file_name_without_extension)
+                excel_file_base = excel_file_base_override or config.get("excel_file", file_name_without_extension)
             
             # Создаем временную метку
             timestamp = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
@@ -3552,6 +3599,8 @@ def convert_specific_json_file(file_name_without_extension, config_key=None):
     except Exception as e:
         logger.error(LOG_MESSAGES['json_conversion_error'].format(error=str(e)))
         return False
+
+# Удалено: пакетная обработка convert_batch_json_files — обрабатываем только явно заданные файлы
 
 # =============================================================================
 # ФУНКЦИИ ВЫВОДА СТАТИСТИКИ
@@ -3667,7 +3716,7 @@ def main():
                             generate_leaders_for_admin_script()
                         elif script_name == "reward":
                             generate_reward_script()
-                        elif script_name == "reward_profiles":
+                        elif script_name == "reward_processing":
                             # reward_profiles теперь обрабатывается как часть reward
                             main_logger.info(LOG_MESSAGES['script_generation_skipped'].format(script_name=script_name, operations="внутри reward"))
                         elif script_name == "profile":
@@ -3693,6 +3742,8 @@ def main():
             
             # ВТОРОЙ ЭТАП: Обработка всех JSON файлов в Excel
             main_logger.info(LOG_MESSAGES['stage2_title'])
+            # Временная метка для дальнейшего анализа
+            main_logger.warning("Требуется разобраться: создается только 1 Excel вместо ожидаемых нескольких")
             for script_name in ACTIVE_SCRIPTS:
                 if script_name in FUNCTION_CONFIGS:
                     config = FUNCTION_CONFIGS[script_name]
@@ -3701,16 +3752,16 @@ def main():
                     # Обработка JSON файлов
                     if active_operations in ["json_only", "both"]:
                         # Проверяем вложенные конфигурации
-                        if script_name == "reward" and "reward_profiles" in config:
+                        if script_name == "reward" and "reward_processing" in config:
                             # Обработка reward_profiles как части reward
-                            reward_profiles_config = config["reward_profiles"]
+                            reward_profiles_config = config["reward_processing"]
                             if "json_file" in reward_profiles_config:
                                 json_file = reward_profiles_config["json_file"]
                                 main_logger.info(LOG_MESSAGES['json_file_processing_info'].format(json_file=json_file))
                                 
-                                convert_specific_json_file(json_file, "reward_profiles")
+                                convert_specific_json_file(json_file, "reward_processing")
                             else:
-                                main_logger.warning(f"Для скрипта {script_name} не указан json_file в конфигурации reward_profiles")
+                                main_logger.warning(f"Для скрипта {script_name} не указан json_file в конфигурации reward_processing")
                         elif script_name == "leaders_for_admin" and "leaders_processing" in config:
                             # Обработка leaders_processing как части leaders_for_admin
                             leaders_processing_config = config["leaders_processing"]
@@ -3725,7 +3776,7 @@ def main():
                             # Прямая конфигурация json_file
                             json_file = config["json_file"]
                             main_logger.info(LOG_MESSAGES['json_file_processing_info'].format(json_file=json_file))
-                            
+                            # Если указан конкретный файл — конвертируем его
                             convert_specific_json_file(json_file, script_name)
                         else:
                             main_logger.warning(f"Для скрипта {script_name} не указан json_file в конфигурации")
