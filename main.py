@@ -3553,16 +3553,20 @@ def convert_specific_json_file(file_name_without_extension, config_key=None):
         # Генерируем уникальное имя Excel файла
         resolved_config_key = config_key
         config = None
+        excel_file_base = file_name_without_extension  # Значение по умолчанию
+        
         if config_key and config_key in FUNCTION_CONFIGS:
             config = FUNCTION_CONFIGS[config_key]
         elif config_key == "reward_processing":
             # reward_profiles хранится внутри FUNCTION_CONFIGS['reward']
             resolved_config_key = "reward"
             config = FUNCTION_CONFIGS.get("reward", {})
-            
-            # Кастомное правило именования для reward/reward_processing: profiles_<VARIANT>_<STAMP> → REWARD_<STAMP>
-            excel_file_base_override = None
-            if config_key in ("reward", "reward_processing"):
+        
+        # Определяем базовое имя файла
+        if config:
+            if config_key == "reward_processing" and "reward_processing" in config:
+                # Кастомное правило именования для reward/reward_processing: profiles_<VARIANT>_<STAMP> → REWARD_<STAMP>
+                excel_file_base_override = None
                 match = re.match(r"^profiles_[A-Za-z]+_(\d{8}-\d{6})$", file_name_without_extension)
                 if match:
                     excel_file_base_override = f"REWARD_{match.group(1)}"
@@ -3572,26 +3576,23 @@ def convert_specific_json_file(file_name_without_extension, config_key=None):
                         excel_file_base_override = f"REWARD_{parts[2]}"
                     else:
                         excel_file_base_override = "REWARD"
-
-            # Проверяем, есть ли вложенные конфигурации
-            if resolved_config_key == "reward" and "reward_processing" in config:
+                
                 reward_profiles_config = config["reward_processing"]
                 excel_file_base = excel_file_base_override or reward_profiles_config.get("excel_file", file_name_without_extension)
             elif config_key == "leaders_for_admin" and "leaders_processing" in config:
                 leaders_processing_config = config["leaders_processing"]
                 excel_file_base = leaders_processing_config.get("excel_file", file_name_without_extension)
-            else:
-                excel_file_base = excel_file_base_override or config.get("excel_file", file_name_without_extension)
-            
-            # Создаем временную метку
-            timestamp = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
-            
-            # Формируем имя файла: имя_из_конфига_YYYY-MM-DD-HH-MM-SS.xlsx (без варианта)
-            excel_filename = f"{excel_file_base}_{timestamp}{FILE_EXTENSIONS['EXCEL']}"
-        else:
-            # Fallback: используем имя JSON файла с временной меткой
-            timestamp = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
-            excel_filename = f"{file_name_without_extension}_{timestamp}{FILE_EXTENSIONS['EXCEL']}"
+            elif config_key == "rating_list" and "rating_processing" in config:
+                rating_processing_config = config["rating_processing"]
+                excel_file_base = rating_processing_config.get("excel_file", file_name_without_extension)
+            elif "excel_file" in config:
+                excel_file_base = config.get("excel_file", file_name_without_extension)
+        
+        # Создаем временную метку
+        timestamp = datetime.datetime.now().strftime('%Y-%m-%d-%H-%M-%S')
+        
+        # Формируем имя файла: имя_из_конфига_YYYY-MM-DD-HH-MM-SS.xlsx
+        excel_filename = f"{excel_file_base}_{timestamp}{FILE_EXTENSIONS['EXCEL']}"
         
         output_excel_path = os.path.join(output_dir, excel_filename)
         
@@ -3768,8 +3769,6 @@ def main():
             
             # ВТОРОЙ ЭТАП: Обработка всех JSON файлов в Excel
             main_logger.info(LOG_MESSAGES['stage2_title'])
-            # Временная метка для дальнейшего анализа
-            main_logger.warning("Требуется разобраться: создается только 1 Excel вместо ожидаемых нескольких")
             for script_name in ACTIVE_SCRIPTS:
                 if script_name in FUNCTION_CONFIGS:
                     config = FUNCTION_CONFIGS[script_name]
@@ -3778,34 +3777,51 @@ def main():
                     # Обработка JSON файлов
                     if active_operations in ["json_only", "both"]:
                         # Проверяем вложенные конфигурации
-                        if script_name == "reward" and "reward_processing" in config:
-                            # Обработка reward_profiles как части reward
-                            reward_profiles_config = config["reward_processing"]
-                            if "json_file" in reward_profiles_config:
+                        if script_name == "reward":
+                            # Для reward проверяем оба варианта: reward_processing и основной json_file
+                            if "reward_processing" in config and "json_file" in config["reward_processing"]:
+                                # Приоритет reward_processing
+                                reward_profiles_config = config["reward_processing"]
                                 json_file = reward_profiles_config["json_file"]
                                 main_logger.info(LOG_MESSAGES['json_file_processing_info'].format(json_file=json_file))
-                                
                                 convert_specific_json_file(json_file, "reward_processing")
-                            else:
-                                main_logger.warning(f"Для скрипта {script_name} не указан json_file в конфигурации reward_processing")
-                        elif script_name == "leaders_for_admin" and "leaders_processing" in config:
-                            # Обработка leaders_processing как части leaders_for_admin
-                            leaders_processing_config = config["leaders_processing"]
-                            if "json_file" in leaders_processing_config:
-                                json_file = leaders_processing_config["json_file"]
+                            elif "json_file" in config:
+                                # Fallback на основной json_file
+                                json_file = config["json_file"]
                                 main_logger.info(LOG_MESSAGES['json_file_processing_info'].format(json_file=json_file))
-                                
                                 convert_specific_json_file(json_file, script_name)
                             else:
-                                main_logger.warning(f"Для скрипта {script_name} не указан json_file в конфигурации leaders_processing")
-                        elif script_name == "rating_list" and "rating_processing" in config:
-                            rating_processing_config = config["rating_processing"]
-                            if "json_file" in rating_processing_config:
+                                main_logger.warning(f"Для скрипта {script_name} не указан json_file ни в reward_processing, ни в основной конфигурации")
+                        elif script_name == "leaders_for_admin":
+                            # Для leaders_for_admin проверяем оба варианта: leaders_processing и основной json_file
+                            if "leaders_processing" in config and "json_file" in config["leaders_processing"]:
+                                # Приоритет leaders_processing
+                                leaders_processing_config = config["leaders_processing"]
+                                json_file = leaders_processing_config["json_file"]
+                                main_logger.info(LOG_MESSAGES['json_file_processing_info'].format(json_file=json_file))
+                                convert_specific_json_file(json_file, script_name)
+                            elif "json_file" in config:
+                                # Fallback на основной json_file
+                                json_file = config["json_file"]
+                                main_logger.info(LOG_MESSAGES['json_file_processing_info'].format(json_file=json_file))
+                                convert_specific_json_file(json_file, script_name)
+                            else:
+                                main_logger.warning(f"Для скрипта {script_name} не указан json_file ни в leaders_processing, ни в основной конфигурации")
+                        elif script_name == "rating_list":
+                            # Для rating_list проверяем оба варианта: rating_processing и основной json_file
+                            if "rating_processing" in config and "json_file" in config["rating_processing"]:
+                                # Приоритет rating_processing
+                                rating_processing_config = config["rating_processing"]
                                 json_file = rating_processing_config["json_file"]
                                 main_logger.info(LOG_MESSAGES['json_file_processing_info'].format(json_file=json_file))
                                 convert_specific_json_file(json_file, script_name)
+                            elif "json_file" in config:
+                                # Fallback на основной json_file
+                                json_file = config["json_file"]
+                                main_logger.info(LOG_MESSAGES['json_file_processing_info'].format(json_file=json_file))
+                                convert_specific_json_file(json_file, script_name)
                             else:
-                                main_logger.warning(f"Для скрипта {script_name} не указан json_file в конфигурации rating_processing")
+                                main_logger.warning(f"Для скрипта {script_name} не указан json_file ни в rating_processing, ни в основной конфигурации")
                         elif "json_file" in config:
                             # Прямая конфигурация json_file
                             json_file = config["json_file"]
