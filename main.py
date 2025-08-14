@@ -1084,108 +1084,51 @@ def flatten_leader_data(leader_data):
 
 def calculate_crystal_rankings(df):
     """
-    Расчет мест по количеству кристаллов на разных уровнях группировки
-    
+    Расчет мест по количеству кристаллов на уровнях BANK/TB/GOSB.
+    Правило ранжирования: чем больше кристаллов — тем лучше место (меньше число).
+    При равенстве кристаллов участники делят одно место, следующее место
+    пропускает позиции (1, 2, 2, 4, 5) — метод ранжирования 'min'.
+
     Args:
-        df (pd.DataFrame): DataFrame с данными рейтинга
-        
+        df (pd.DataFrame): входной DataFrame
+
     Returns:
-        pd.DataFrame: DataFrame с добавленными колонками мест
+        pd.DataFrame: копия с добавленными колонками мест
     """
-    # Создаем копию DataFrame
-    result_df = df.copy()
-    
-    # Добавляем колонки для мест
-    result_df['BANK_placeByCrystals'] = 0
-    result_df['TB_placeByCrystals'] = 0
-    result_df['GOSB_placeByCrystals'] = 0
-    
-    # Получаем логгер для этой функции
     logger = logging.getLogger(__name__)
-    
     logger.info(LOG_MESSAGES['crystal_rankings_start'])
-    
-    # Группируем по business_block и time_period для расчета мест
-    for (business_block, time_period), group in result_df.groupby(['rating_businessBlock', 'rating_timePeriod']):
-        logger.debug(LOG_MESSAGES['crystal_rankings_bank_level'].format(
-            business_block=business_block, time_period=time_period))
-        # Сортируем по количеству кристаллов (по убыванию - больше кристаллов = лучшее место)
-        sorted_group = group.sort_values('crystalsEarned', ascending=False)
-        
-        # Расчет места на уровне BANK (среди всех в рамках одного business_block и time_period)
-        current_rank = 1
-        i = 0
-        while i < len(sorted_group):
-            current_crystals = sorted_group.iloc[i]['crystalsEarned']
-            same_crystals_count = 0
-            
-            # Считаем количество участников с одинаковыми кристаллами
-            j = i
-            while j < len(sorted_group) and sorted_group.iloc[j]['crystalsEarned'] == current_crystals:
-                same_crystals_count += 1
-                j += 1
-            
-            # Присваиваем место всем участникам с одинаковыми кристаллами
-            for k in range(i, j):
-                result_df.loc[sorted_group.index[k], 'BANK_placeByCrystals'] = current_rank
-            
-            # Следующее место будет current_rank + same_crystals_count
-            current_rank += same_crystals_count
-            i = j
-        
-        # Расчет места на уровне TB (среди всех в одном terDivisionName в рамках одного business_block и time_period)
-        for ter_division in group['terDivisionName'].unique():
-            logger.debug(LOG_MESSAGES['crystal_rankings_tb_level'].format(
-                ter_division=ter_division, business_block=business_block, time_period=time_period))
-            tb_group = group[group['terDivisionName'] == ter_division]
-            sorted_tb_group = tb_group.sort_values('crystalsEarned', ascending=False)
-            
-            current_rank = 1
-            i = 0
-            while i < len(sorted_tb_group):
-                current_crystals = sorted_tb_group.iloc[i]['crystalsEarned']
-                same_crystals_count = 0
-                
-                # Считаем количество участников с одинаковыми кристаллами
-                j = i
-                while j < len(sorted_tb_group) and sorted_tb_group.iloc[j]['crystalsEarned'] == current_crystals:
-                    same_crystals_count += 1
-                    j += 1
-                
-                # Присваиваем место всем участникам с одинаковыми кристаллами
-                for k in range(i, j):
-                    result_df.loc[sorted_tb_group.index[k], 'TB_placeByCrystals'] = current_rank
-                
-                current_rank += same_crystals_count
-                i = j
-        
-        # Расчет места на уровне GOSB (среди всех в одном terDivisionName и gosbCode в рамках одного business_block и time_period)
-        for ter_division in group['terDivisionName'].unique():
-            for gosb_code in group[group['terDivisionName'] == ter_division]['gosbCode'].unique():
-                logger.debug(LOG_MESSAGES['crystal_rankings_gosb_level'].format(
-                    ter_division=ter_division, gosb_code=gosb_code, business_block=business_block, time_period=time_period))
-                gosb_group = group[(group['terDivisionName'] == ter_division) & (group['gosbCode'] == gosb_code)]
-                sorted_gosb_group = gosb_group.sort_values('crystalsEarned', ascending=False)
-                
-                current_rank = 1
-                i = 0
-                while i < len(sorted_gosb_group):
-                    current_crystals = sorted_gosb_group.iloc[i]['crystalsEarned']
-                    same_crystals_count = 0
-                    
-                    # Считаем количество участников с одинаковыми кристаллами
-                    j = i
-                    while j < len(sorted_gosb_group) and sorted_gosb_group.iloc[j]['crystalsEarned'] == current_crystals:
-                        same_crystals_count += 1
-                        j += 1
-                    
-                    # Присваиваем место всем участникам с одинаковыми кристаллами
-                    for k in range(i, j):
-                        result_df.loc[sorted_gosb_group.index[k], 'GOSB_placeByCrystals'] = current_rank
-                    
-                    current_rank += same_crystals_count
-                    i = j
-    
+
+    result_df = df.copy()
+
+    # Готовим числовую колонку для корректной сортировки и ранжирования
+    crystals_col = 'crystalsEarned'
+    numeric_col = '_crystals_numeric_for_ranking'
+    result_df[numeric_col] = pd.to_numeric(result_df[crystals_col], errors='coerce')
+
+    # BANK: в рамках (businessBlock, timePeriod)
+    result_df['BANK_placeByCrystals'] = (
+        result_df.groupby(['rating_businessBlock', 'rating_timePeriod'])[numeric_col]
+                 .rank(method='min', ascending=False)
+                 .astype('Int64')
+    )
+
+    # TB: в рамках (businessBlock, timePeriod, terDivisionName)
+    result_df['TB_placeByCrystals'] = (
+        result_df.groupby(['rating_businessBlock', 'rating_timePeriod', 'terDivisionName'])[numeric_col]
+                 .rank(method='min', ascending=False)
+                 .astype('Int64')
+    )
+
+    # GOSB: в рамках (businessBlock, timePeriod, terDivisionName, gosbCode)
+    result_df['GOSB_placeByCrystals'] = (
+        result_df.groupby(['rating_businessBlock', 'rating_timePeriod', 'terDivisionName', 'gosbCode'])[numeric_col]
+                 .rank(method='min', ascending=False)
+                 .astype('Int64')
+    )
+
+    # Удаляем служебную колонку
+    result_df.drop(columns=[numeric_col], inplace=True)
+
     logger.info(LOG_MESSAGES['crystal_rankings_completed'])
     return result_df
 
