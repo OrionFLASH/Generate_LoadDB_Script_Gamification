@@ -587,6 +587,25 @@ FUNCTION_CONFIGS = {
             "max_participants_per_page": 100,  # Ключ: максимальное количество участников на страницу
             "skip_empty_pages": True  # Ключ: пропускать ли пустые страницы
         },
+        "rating_processing": {  # Ключ: конфигурация для обработки данных рейтинга (JSON → Excel)
+            "name": "Rating List Processing",  # Ключ: название обработки
+            "description": "Обработка рейтинга участников из JSON в Excel",  # Ключ: описание
+            "active_operations": "json_only",  # Ключ: активные операции для обработки
+            "json_file": "rating_list_SIGMA_20250814-165701",  # Ключ: имя JSON файла (без расширения)
+            "excel_file": "RatingList",  # Ключ: имя Excel файла для создания (без расширения)
+            "excel_freeze_cell": "B2",  # Ключ: ячейка для закрепления в Excel
+            "column_settings": {  # Ключ: настройки обработки колонок для Excel
+                "columns_to_keep": [],
+                "columns_to_remove": ["photoData"],
+                "numeric_conversions": {
+                    "integer_fields": {
+                        "fields": ["gosbCode", "placeInRating"],
+                        "type": "integer",
+                        "replace_original": True
+                    }
+                }
+            }
+        },
         "data_source": "variable",  # Ключ: источник данных (external_file/variable)
         "business_blocks": [  # Ключ: массив бизнес-блоков для обработки
             "KMKKSB",      # Клиентский менеджер крупнейшего, крупного и среднего бизнеса
@@ -2786,6 +2805,9 @@ def save_excel_file(df, output_excel_path, config_key=None):
                 elif config_key == "leaders_for_admin" and "leaders_processing" in config:
                     leaders_processing_config = config["leaders_processing"]
                     freeze_cell = leaders_processing_config.get('excel_freeze_cell', "B2")
+                elif config_key == "rating_list" and "rating_processing" in config:
+                    rating_processing_config = config["rating_processing"]
+                    freeze_cell = rating_processing_config.get('excel_freeze_cell', "B2")
                 else:
                     freeze_cell = config.get('excel_freeze_cell', "B2")
             
@@ -3427,7 +3449,11 @@ def convert_rating_list_json_to_excel(input_json_path, output_excel_path, config
 
         if config_key == "rating_list" and "rating_list" in FUNCTION_CONFIGS:
             config = FUNCTION_CONFIGS["rating_list"]
-            column_settings = config.get("column_settings")
+            # Приоритет настроек из rating_processing, если они заданы
+            if "rating_processing" in config and "column_settings" in config["rating_processing"]:
+                column_settings = config["rating_processing"]["column_settings"]
+            else:
+                column_settings = config.get("column_settings")
             if column_settings:
                 logger.info(LOG_MESSAGES['column_settings_applying'])
                 df = apply_column_settings(df, column_settings)
@@ -3458,7 +3484,7 @@ def convert_json_to_excel(input_json_path, output_excel_path, config_key=None):
         return convert_reward_json_to_excel(input_json_path, output_excel_path, config_key)
     elif config_key == "reward_processing" or (config_key == "reward" and "reward_processing" in FUNCTION_CONFIGS["reward"]):
         return convert_reward_profiles_json_to_excel(input_json_path, output_excel_path, "reward")
-    elif config_key == "rating_list":
+    elif config_key == "rating_list" or (config_key == "rating_list" and "rating_processing" in FUNCTION_CONFIGS["rating_list"]):
         return convert_rating_list_json_to_excel(input_json_path, output_excel_path, config_key)
     elif config_key == "leaders_processing" or (config_key == "leaders_for_admin" and "leaders_processing" in FUNCTION_CONFIGS["leaders_for_admin"]):
         return convert_leaders_json_to_excel(input_json_path, output_excel_path, "leaders_for_admin")
@@ -3772,6 +3798,14 @@ def main():
                                 convert_specific_json_file(json_file, script_name)
                             else:
                                 main_logger.warning(f"Для скрипта {script_name} не указан json_file в конфигурации leaders_processing")
+                        elif script_name == "rating_list" and "rating_processing" in config:
+                            rating_processing_config = config["rating_processing"]
+                            if "json_file" in rating_processing_config:
+                                json_file = rating_processing_config["json_file"]
+                                main_logger.info(LOG_MESSAGES['json_file_processing_info'].format(json_file=json_file))
+                                convert_specific_json_file(json_file, script_name)
+                            else:
+                                main_logger.warning(f"Для скрипта {script_name} не указан json_file в конфигурации rating_processing")
                         elif "json_file" in config:
                             # Прямая конфигурация json_file
                             json_file = config["json_file"]
