@@ -1711,7 +1711,6 @@ def generate_leaders_for_admin_script(data_list=None):
       errors++;
     }}
   }}
-  }}
 
   // Удаляем photoData только если это включено в настройках
   if ({str(remove_photo_data).lower()}) {{
