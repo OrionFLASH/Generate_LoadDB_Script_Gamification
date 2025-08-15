@@ -617,10 +617,10 @@ FUNCTION_CONFIGS = {
             "active_operations": "json_only",  # Ключ: активные операции для обработки
             "json_file": "rating_list_SIGMA_20250814-165701",  # Ключ: имя JSON файла (без расширения)
             "excel_file": "RatingList",  # Ключ: имя Excel файла для создания (без расширения)
-            "excel_freeze_cell": "B2",  # Ключ: ячейка для закрепления в Excel
+            "excel_freeze_cell": "E2",  # Ключ: ячейка для закрепления в Excel
             "column_settings": {  # Ключ: настройки обработки колонок для Excel
                 "columns_to_keep": [],
-                "columns_to_remove": ["photoData", "isMarked", "colorCode"],
+                "columns_to_remove": ["photoData", "isMarked", "colorCode", "placeInRating"],
                 "numeric_conversions": {
                     "integer_fields": {
                         "fields": ["gosbCode", "placeInRating", "crystalsEarned"],
@@ -650,7 +650,7 @@ FUNCTION_CONFIGS = {
             "SEASON_m_2024",
             "SEASON_m_2025_1"
         ],
-        "json_file": "rating_list_SIGMA_20250814-165701"  # Ключ: имя JSON файла для обработки (без расширения)
+ #       "json_file": "rating_list_SIGMA_20250814-165701"  # Ключ: имя JSON файла для обработки (без расширения)
     }
 }
 
